@@ -60,7 +60,9 @@ clang-format -i src/**/*.cpp src/**/*.h
 ## Configuration
 
 1. Generate icons: `pip install Pillow && python generate-icons.py`
-2. Copy `src/config_remote.cpp.example` to `src/config_remote.cpp`
+2. Copy an example config to `src/config_remote.cpp`:
+   - `src/config_remote_single.cpp.example` - Single page, no navigation
+   - `src/config_remote_multi.cpp.example` - Multiple pages with navigation bar
 3. Edit WiFi credentials, HA WebSocket URL, and long-lived access token
 4. Define entities and add widgets to pages
 
@@ -70,15 +72,6 @@ The UI supports up to 4 pages (`MAX_PAGES`). When multiple pages are defined, a 
 - Left third of nav bar: tap to go to previous page
 - Center: page indicator dots
 - Right third: tap to go to next page
-
-**Creating pages in `config_remote.cpp`:**
-```cpp
-Screen* page1 = screen_manager_add_page(screens);
-screen_add_slider(..., page1);
-
-Screen* page2 = screen_manager_add_page(screens);
-screen_add_button(..., page2);
-```
 
 **Key structs:**
 - `ScreenManager`: holds all pages, tracks current page
