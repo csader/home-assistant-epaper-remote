@@ -62,20 +62,31 @@ clang-format -i src/**/*.cpp src/**/*.h
 1. Generate icons: `pip install Pillow && python generate-icons.py`
 2. Copy an example config to `src/config_remote.cpp`:
    - `src/config_remote_single.cpp.example` - Single page, no navigation
-   - `src/config_remote_multi.cpp.example` - Multiple pages with navigation bar
+   - `src/config_remote_multi.cpp.example` - Multiple pages with carousel navigation (arrows + dots)
+   - `src/config_remote_tabs.cpp.example` - Multiple pages with tab navigation (labeled buttons)
 3. Edit WiFi credentials, HA WebSocket URL, and long-lived access token
 4. Define entities and add widgets to pages
 
 ## Multi-Page Support
 
-The UI supports up to 4 pages (`MAX_PAGES`). When multiple pages are defined, a navigation bar appears at the bottom:
-- Left third of nav bar: tap to go to previous page
-- Center: page indicator dots
-- Right third: tap to go to next page
+The UI supports up to 4 pages (`MAX_PAGES`). Two navigation modes are available:
+
+**Carousel mode** (default): Arrows and dots at bottom, tap left/right thirds to navigate.
+
+**Tab mode**: Labeled text buttons at bottom, tap to jump directly to page. Active tab shown with bold + underline.
+
+```cpp
+// Enable tab navigation
+screen_manager_set_nav_mode(screens, NavigationMode::Tabs);
+
+// Add pages with labels (used as tab text)
+Screen* page1 = screen_manager_add_page(screens, "Lights");
+Screen* page2 = screen_manager_add_page(screens, "Climate");
+```
 
 **Key structs:**
-- `ScreenManager`: holds all pages, tracks current page
-- `Screen`: holds widgets for a single page
+- `ScreenManager`: holds all pages, tracks current page and nav mode
+- `Screen`: holds widgets for a single page, plus optional label for tabs
 
 ## Debugging
 

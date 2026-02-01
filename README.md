@@ -46,13 +46,21 @@ cp src/config_remote_single.cpp.example src/config_remote.cpp
 
 All widgets on one screen, no navigation bar.
 
-#### Multi-page layout
+#### Multi-page with carousel navigation
 
 ```bash
 cp src/config_remote_multi.cpp.example src/config_remote.cpp
 ```
 
-Widgets organized across multiple pages (up to 4). A navigation bar appears at the bottom - tap the left third to go back, or the right third to go forward.
+Widgets organized across multiple pages (up to 4). Arrows and dots appear at the bottom - tap left third to go back, right third to go forward.
+
+#### Multi-page with tab navigation
+
+```bash
+cp src/config_remote_tabs.cpp.example src/config_remote.cpp
+```
+
+Widgets organized across multiple pages with labeled tabs at the bottom. Tap a tab to jump directly to that page. Active tab is shown with bold text and underline.
 
 ---
 

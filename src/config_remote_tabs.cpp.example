@@ -1,0 +1,174 @@
+#include "config_remote.h"
+#include "assets/icons.h"
+#include "boards.h"
+#include "config.h"
+#include "screen.h"
+#include "store.h"
+
+// Tab navigation configuration example
+// Copy this file to config_remote.cpp and customize for your setup
+//
+// Navigation: Text tabs appear at the bottom of the screen.
+// Tap a tab label to jump directly to that page.
+
+void configure_remote(Configuration* config, EntityStore* store, ScreenManager* screens) {
+    // =========================================================================
+    // WiFi Configuration
+    // =========================================================================
+    config->wifi_ssid = "MyWifiSSID";
+    config->wifi_password = "my-wifi-password1234!";
+
+    // =========================================================================
+    // Home Assistant Configuration
+    // =========================================================================
+    // If you're using https, use wss://, otherwise use ws://
+    config->home_assistant_url = "ws://192.168.0.1/api/websocket";
+    config->home_assistant_token = "ey...";
+    config->root_ca = ISRG_ROOT_X1; // You probably don't need to update this
+
+    // =========================================================================
+    // Navigation Mode: Tabs
+    // =========================================================================
+    screen_manager_set_nav_mode(screens, NavigationMode::Tabs);
+
+    // =========================================================================
+    // Entity Declarations
+    // =========================================================================
+
+    // Lights
+    EntityConfig living_room_lights = {
+        .entity_id = "light.living_room",
+        .command_type = CommandType::SetLightBrightnessPercentage,
+    };
+    EntityConfig bedroom_lights = {
+        .entity_id = "light.bedroom",
+        .command_type = CommandType::SetLightBrightnessPercentage,
+    };
+    EntityConfig kitchen_lights = {
+        .entity_id = "light.kitchen",
+        .command_type = CommandType::SetLightBrightnessPercentage,
+    };
+
+    // Climate
+    EntityConfig air_purifier = {
+        .entity_id = "fan.air_purifier",
+        .command_type = CommandType::SetFanSpeedPercentage,
+    };
+    EntityConfig bedroom_fan = {
+        .entity_id = "fan.bedroom",
+        .command_type = CommandType::SetFanSpeedPercentage,
+    };
+
+    // Automations
+    EntityConfig night_mode = {
+        .entity_id = "automation.night_mode",
+        .command_type = CommandType::AutomationOnOff,
+    };
+    EntityConfig away_mode = {
+        .entity_id = "automation.away_mode",
+        .command_type = CommandType::AutomationOnOff,
+    };
+
+    // =========================================================================
+    // PAGE 1: Lights
+    // The second parameter to screen_manager_add_page is the tab label
+    // =========================================================================
+    Screen* lights_page = screen_manager_add_page(screens, "Lights");
+
+    screen_add_slider(
+        SliderConfig{
+            .entity_ref = store_add_entity(store, living_room_lights),
+            .label = "Living room",
+            .icon_on = lightbulb_outline,
+            .icon_off = lightbulb_off_outline,
+            .pos_x = 30,
+            .pos_y = 30,
+            .width = DISPLAY_WIDTH - 60,
+            .height = 170,
+        },
+        lights_page);
+
+    screen_add_slider(
+        SliderConfig{
+            .entity_ref = store_add_entity(store, bedroom_lights),
+            .label = "Bedroom",
+            .icon_on = lightbulb_outline,
+            .icon_off = lightbulb_off_outline,
+            .pos_x = 30,
+            .pos_y = 240,
+            .width = DISPLAY_WIDTH - 60,
+            .height = 170,
+        },
+        lights_page);
+
+    screen_add_slider(
+        SliderConfig{
+            .entity_ref = store_add_entity(store, kitchen_lights),
+            .label = "Kitchen",
+            .icon_on = lightbulb_outline,
+            .icon_off = lightbulb_off_outline,
+            .pos_x = 30,
+            .pos_y = 450,
+            .width = DISPLAY_WIDTH - 60,
+            .height = 170,
+        },
+        lights_page);
+
+    // =========================================================================
+    // PAGE 2: Climate
+    // =========================================================================
+    Screen* climate_page = screen_manager_add_page(screens, "Climate");
+
+    screen_add_slider(
+        SliderConfig{
+            .entity_ref = store_add_entity(store, air_purifier),
+            .label = "Air purifier",
+            .icon_on = fan,
+            .icon_off = fan_off,
+            .pos_x = 30,
+            .pos_y = 30,
+            .width = DISPLAY_WIDTH - 60,
+            .height = 170,
+        },
+        climate_page);
+
+    screen_add_slider(
+        SliderConfig{
+            .entity_ref = store_add_entity(store, bedroom_fan),
+            .label = "Bedroom fan",
+            .icon_on = fan,
+            .icon_off = fan_off,
+            .pos_x = 30,
+            .pos_y = 240,
+            .width = DISPLAY_WIDTH - 60,
+            .height = 170,
+        },
+        climate_page);
+
+    // =========================================================================
+    // PAGE 3: Auto
+    // =========================================================================
+    Screen* auto_page = screen_manager_add_page(screens, "Auto");
+
+    screen_add_button(
+        ButtonConfig{
+            .entity_ref = store_add_entity(store, night_mode),
+            .label = "Night mode",
+            .icon_on = robot_outline,
+            .icon_off = robot_off_outline,
+            .pos_x = 30,
+            .pos_y = 30,
+        },
+        auto_page);
+
+    screen_add_button(
+        ButtonConfig{
+            .entity_ref = store_add_entity(store, away_mode),
+            .label = "Away mode",
+            .icon_on = robot_outline,
+            .icon_off = robot_off_outline,
+            .pos_x = 30,
+            .pos_y = 170,
+        },
+        auto_page);
+}

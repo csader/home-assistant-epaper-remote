@@ -9,8 +9,8 @@ static bool is_nav_touch(uint16_t y) {
     return y >= (DISPLAY_HEIGHT - NAV_BAR_HEIGHT);
 }
 
-// Handle navigation touch - returns true if page changed
-static bool handle_nav_touch(ScreenManager* screens, uint16_t x, EntityStore* store) {
+// Handle carousel navigation touch - returns true if page changed
+static bool handle_carousel_touch(ScreenManager* screens, uint16_t x, EntityStore* store) {
     uint8_t old_page = screens->current_page;
 
     // Left third = previous, right third = next
@@ -28,6 +28,42 @@ static bool handle_nav_touch(ScreenManager* screens, uint16_t x, EntityStore* st
         return true;
     }
     return false;
+}
+
+// Handle tab navigation touch - returns true if page changed
+static bool handle_tabs_touch(ScreenManager* screens, uint16_t x, EntityStore* store) {
+    uint8_t old_page = screens->current_page;
+
+    // Calculate tab positions (same logic as ui_draw_tabs_nav)
+    // We estimate tab widths based on a rough average since we don't have font metrics here
+    uint16_t avg_tab_width = DISPLAY_WIDTH / screens->page_count;
+    uint16_t start_x = (DISPLAY_WIDTH - (avg_tab_width * screens->page_count)) / 2;
+
+    // Determine which tab was touched
+    if (x >= start_x) {
+        uint8_t touched_tab = (x - start_x) / avg_tab_width;
+        if (touched_tab < screens->page_count) {
+            screen_manager_set_page(screens, touched_tab);
+        }
+    }
+
+    if (screens->current_page != old_page) {
+        ESP_LOGI(TAG, "Tab changed from %d to %d", old_page, screens->current_page);
+        if (store->ui_task) {
+            xTaskNotifyGive(store->ui_task);
+        }
+        return true;
+    }
+    return false;
+}
+
+// Handle navigation touch - returns true if page changed
+static bool handle_nav_touch(ScreenManager* screens, uint16_t x, EntityStore* store) {
+    if (screens->nav_mode == NavigationMode::Tabs) {
+        return handle_tabs_touch(screens, x, store);
+    } else {
+        return handle_carousel_touch(screens, x, store);
+    }
 }
 
 void touch_task(void* arg) {

@@ -15,10 +15,16 @@ enum class UiMode : uint8_t {
     MainScreen,
 };
 
+enum class NavMode : uint8_t {
+    Carousel,
+    Tabs,
+};
+
 struct UIState {
     UiMode mode = UiMode::Blank;
     uint8_t current_page = 0;
     uint8_t page_count = 1;
+    NavMode nav_mode = NavMode::Carousel;
     uint8_t widget_values[MAX_WIDGETS_PER_SCREEN] = {};
 };
 

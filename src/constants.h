@@ -39,3 +39,5 @@ constexpr uint16_t NAV_BAR_HEIGHT = 60;
 constexpr uint16_t NAV_BUTTON_SIZE = 50;
 constexpr uint16_t PAGE_DOT_RADIUS = 8;
 constexpr uint16_t PAGE_DOT_SPACING = 30;
+constexpr uint16_t TAB_UNDERLINE_THICKNESS = 3;
+constexpr uint16_t TAB_PADDING = 20;

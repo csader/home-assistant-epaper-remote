@@ -1,5 +1,6 @@
 #include "ui.h"
 #include "assets/icons.h"
+#include "assets/Montserrat_Regular_26.h"
 #include "boards.h"
 #include "constants.h"
 #include "draw.h"
@@ -35,11 +36,7 @@ void accumulate_damage(Rect& acc, const Rect& r) {
     acc.h = y2 - y1;
 }
 
-void ui_draw_page_indicator(FASTEPD* epaper, uint8_t current_page, uint8_t page_count, BitDepth depth) {
-    if (page_count <= 1) {
-        return;
-    }
-
+void ui_draw_carousel_nav(FASTEPD* epaper, uint8_t current_page, uint8_t page_count, BitDepth depth) {
     uint8_t fill_color = (depth == BitDepth::BD_4BPP) ? 0xf : BBEP_WHITE;
 
     // Calculate total width of indicator dots
@@ -87,13 +84,69 @@ void ui_draw_page_indicator(FASTEPD* epaper, uint8_t current_page, uint8_t page_
     }
 }
 
-void ui_main_screen_full_draw(UIState* state, BitDepth depth, Screen* screen, FASTEPD* epaper) {
+void ui_draw_tabs_nav(FASTEPD* epaper, ScreenManager* screens, uint8_t current_page, BitDepth depth) {
+    epaper->setFont(Montserrat_Regular_26);
+    epaper->setTextColor(BBEP_BLACK);
+
+    // Calculate tab widths and total width
+    BB_RECT text_rects[MAX_PAGES];
+    uint16_t total_width = 0;
+    for (uint8_t i = 0; i < screens->page_count; i++) {
+        const char* label = screens->pages[i].label ? screens->pages[i].label : "Page";
+        epaper->getStringBox(label, &text_rects[i]);
+        total_width += text_rects[i].w + TAB_PADDING * 2;
+    }
+
+    // Calculate starting x position to center all tabs
+    uint16_t x = (DISPLAY_WIDTH - total_width) / 2;
+    uint16_t y = DISPLAY_HEIGHT - NAV_BAR_HEIGHT / 2;
+
+    // Draw each tab
+    for (uint8_t i = 0; i < screens->page_count; i++) {
+        const char* label = screens->pages[i].label ? screens->pages[i].label : "Page";
+        uint16_t tab_width = text_rects[i].w + TAB_PADDING * 2;
+        uint16_t text_x = x + TAB_PADDING;
+        uint16_t text_y = y + text_rects[i].h / 2;
+
+        // Draw tab label
+        epaper->setCursor(text_x, text_y);
+        epaper->write(label);
+
+        // Active tab: bold (draw twice offset) + underline
+        if (i == current_page) {
+            // Bold effect: draw text again slightly offset
+            epaper->setCursor(text_x + 1, text_y);
+            epaper->write(label);
+
+            // Underline
+            uint16_t underline_y = y + text_rects[i].h / 2 + 8;
+            epaper->fillRect(x + TAB_PADDING / 2, underline_y,
+                           text_rects[i].w + TAB_PADDING, TAB_UNDERLINE_THICKNESS, BBEP_BLACK);
+        }
+
+        x += tab_width;
+    }
+}
+
+void ui_draw_navigation(FASTEPD* epaper, ScreenManager* screens, uint8_t current_page, BitDepth depth) {
+    if (screens->page_count <= 1) {
+        return;
+    }
+
+    if (screens->nav_mode == NavigationMode::Tabs) {
+        ui_draw_tabs_nav(epaper, screens, current_page, depth);
+    } else {
+        ui_draw_carousel_nav(epaper, current_page, screens->page_count, depth);
+    }
+}
+
+void ui_main_screen_full_draw(UIState* state, BitDepth depth, Screen* screen, ScreenManager* screens, FASTEPD* epaper) {
     for (uint8_t widget_idx = 0; widget_idx < screen->widget_count; widget_idx++) {
         screen->widgets[widget_idx]->fullDraw(epaper, depth, state->widget_values[widget_idx]);
     }
 
-    // Draw page indicator
-    ui_draw_page_indicator(epaper, state->current_page, state->page_count, depth);
+    // Draw navigation
+    ui_draw_navigation(epaper, screens, state->current_page, depth);
 }
 
 void ui_show_message(UiMode mode, FASTEPD* epaper) {
@@ -154,13 +207,13 @@ void ui_task(void* arg) {
 
                 if (current_state.mode == UiMode::MainScreen) {
                     // Display the main screen in its full glory
-                    ui_main_screen_full_draw(&current_state, BitDepth::BD_4BPP, current_screen, ctx->epaper);
+                    ui_main_screen_full_draw(&current_state, BitDepth::BD_4BPP, current_screen, ctx->screens, ctx->epaper);
                     ctx->epaper->fullUpdate(CLEAR_SLOW, true);
 
                     // Preload the 1BPP version for fast updates
                     ctx->epaper->setMode(BB_MODE_1BPP);
                     ctx->epaper->fillScreen(BBEP_WHITE);
-                    ui_main_screen_full_draw(&current_state, BitDepth::BD_1BPP, current_screen, ctx->epaper);
+                    ui_main_screen_full_draw(&current_state, BitDepth::BD_1BPP, current_screen, ctx->screens, ctx->epaper);
                     ctx->epaper->backupPlane();
                 } else {
                     ui_show_message(current_state.mode, ctx->epaper);
@@ -202,13 +255,13 @@ void ui_task(void* arg) {
             // Cleanup the display
             ctx->epaper->setMode(BB_MODE_4BPP);
             ctx->epaper->fillScreen(0xf);
-            ui_main_screen_full_draw(&displayed_state, BitDepth::BD_4BPP, current_screen, ctx->epaper);
+            ui_main_screen_full_draw(&displayed_state, BitDepth::BD_4BPP, current_screen, ctx->screens, ctx->epaper);
             ctx->epaper->fullUpdate(CLEAR_FAST, true);
 
             // Preload the 1bpp version for fast updates
             ctx->epaper->setMode(BB_MODE_1BPP);
             ctx->epaper->fillScreen(BBEP_WHITE);
-            ui_main_screen_full_draw(&displayed_state, BitDepth::BD_1BPP, current_screen, ctx->epaper);
+            ui_main_screen_full_draw(&displayed_state, BitDepth::BD_1BPP, current_screen, ctx->screens, ctx->epaper);
             ctx->epaper->backupPlane();
 
             display_is_dirty = false;
