@@ -36,7 +36,80 @@ In Home Assistant:
 
 ### Update configuration
 
-Copy `src/config_remote.cpp.example` to `src/config_remote.cpp` then update the file accordingly.
+Copy `src/config_remote.cpp.example` to `src/config_remote.cpp` then update the file with your WiFi credentials, Home Assistant URL, and token.
+
+#### Single-page layout
+
+For a simple single-page remote, create one page and add your widgets:
+
+```cpp
+void configure_remote(Configuration* config, EntityStore* store, ScreenManager* screens) {
+    // WiFi and Home Assistant config...
+
+    // Create a single page
+    Screen* page = screen_manager_add_page(screens);
+
+    // Add widgets to the page
+    screen_add_slider(
+        SliderConfig{
+            .entity_ref = store_add_entity(store, my_light),
+            .label = "Living room",
+            .icon_on = lightbulb_outline,
+            .icon_off = lightbulb_off_outline,
+            .pos_x = 30,
+            .pos_y = 30,
+            .width = DISPLAY_WIDTH - 60,
+            .height = 170,
+        },
+        page);
+
+    screen_add_button(
+        ButtonConfig{
+            .entity_ref = store_add_entity(store, my_switch),
+            .label = "PC",
+            .icon_on = lightbulb_outline,
+            .icon_off = lightbulb_off_outline,
+            .pos_x = 30,
+            .pos_y = 240,
+        },
+        page);
+}
+```
+
+#### Multi-page layout
+
+For more controls, create multiple pages. A navigation bar with arrows and page dots will appear at the bottom:
+
+```cpp
+void configure_remote(Configuration* config, EntityStore* store, ScreenManager* screens) {
+    // WiFi and Home Assistant config...
+
+    // Page 1: Lights
+    Screen* lights_page = screen_manager_add_page(screens);
+    screen_add_slider(..., lights_page);
+    screen_add_slider(..., lights_page);
+
+    // Page 2: Climate
+    Screen* climate_page = screen_manager_add_page(screens);
+    screen_add_slider(..., climate_page);
+    screen_add_button(..., climate_page);
+}
+```
+
+Navigation: tap the left third of the bottom bar to go back, or the right third to go forward. Up to 4 pages are supported.
+
+### Build and upload
+
+```bash
+# Build for Lilygo T5 E-Paper S3 Pro
+pio run -e lilygo-t5-s3
+
+# Build for M5Stack M5Paper S3
+pio run -e m5-papers3
+
+# Build and upload (connect board via USB)
+pio run -e lilygo-t5-s3 --target upload
+```
 
 ## Notes
 
