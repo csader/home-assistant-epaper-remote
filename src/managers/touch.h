@@ -8,7 +8,7 @@ struct TouchTaskArgs {
     SharedUIState* state;
     EntityStore* store;
     BBCapTouch* bbct;
-    Screen* screen;
+    ScreenManager* screens;
 };
 
 void touch_task(void* arg);

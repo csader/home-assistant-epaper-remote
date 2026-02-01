@@ -6,7 +6,7 @@
 
 struct UITaskArgs {
     EntityStore* store;
-    Screen* screen;
+    ScreenManager* screens;
     FASTEPD* epaper;
     SharedUIState* shared_state;
 };

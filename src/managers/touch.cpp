@@ -1,13 +1,40 @@
 #include "managers/touch.h"
 #include "boards.h"
+#include "constants.h"
 
 static const char* TAG = "touch";
+
+// Check if touch is in navigation area (bottom of screen)
+static bool is_nav_touch(uint16_t y) {
+    return y >= (DISPLAY_HEIGHT - NAV_BAR_HEIGHT);
+}
+
+// Handle navigation touch - returns true if page changed
+static bool handle_nav_touch(ScreenManager* screens, uint16_t x, EntityStore* store) {
+    uint8_t old_page = screens->current_page;
+
+    // Left third = previous, right third = next
+    if (x < DISPLAY_WIDTH / 3) {
+        screen_manager_prev_page(screens);
+    } else if (x > DISPLAY_WIDTH * 2 / 3) {
+        screen_manager_next_page(screens);
+    }
+
+    if (screens->current_page != old_page) {
+        ESP_LOGI(TAG, "Page changed from %d to %d", old_page, screens->current_page);
+        if (store->ui_task) {
+            xTaskNotifyGive(store->ui_task);
+        }
+        return true;
+    }
+    return false;
+}
 
 void touch_task(void* arg) {
     TouchTaskArgs* ctx = static_cast<TouchTaskArgs*>(arg);
     BBCapTouch* bbct = ctx->bbct;
     EntityStore* store = ctx->store;
-    Screen* screen = ctx->screen;
+    ScreenManager* screens = ctx->screens;
 
     // UI State values
     uint32_t ui_state_version = 0;
@@ -21,6 +48,7 @@ void touch_task(void* arg) {
     uint32_t last_touch_ms = 0;
     uint8_t widget_original_value = 0;
     uint8_t widget_current_value = 0;
+    bool nav_touch_handled = false;
 
     // Initialize touch
     ESP_LOGI(TAG, "Initializing touchscreen...");
@@ -33,6 +61,13 @@ void touch_task(void* arg) {
         if (bbct->getSamples(&ti)) {
             last_touch_ms = millis();
             ui_state_copy(ctx->state, &ui_state_version, ui_state);
+
+            // Only process touches when on main screen
+            if (ui_state->mode != UiMode::MainScreen) {
+                continue;
+            }
+
+            Screen* screen = screen_manager_get_current(screens);
 
             // We're already targeting a widget
             if (active_widget != -1) {
@@ -52,18 +87,26 @@ void touch_task(void* arg) {
                 touch_event.x = ti.x[0];
                 touch_event.y = ti.y[0];
                 touching = true;
-                for (size_t widget_idx = 0; widget_idx < screen->widget_count; widget_idx++) {
-                    if (screen->widgets[widget_idx]->isTouching(&touch_event)) {
-                        ESP_LOGI(TAG, "Starting touch on widget %d", widget_idx);
-                        active_widget = widget_idx;
+                nav_touch_handled = false;
 
-                        // Get the new value
-                        widget_original_value = ui_state->widget_values[widget_idx];
-                        widget_current_value = screen->widgets[widget_idx]->getValueFromTouch(&touch_event, widget_original_value);
+                // Check for navigation touch first (only if multiple pages)
+                if (screens->page_count > 1 && is_nav_touch(touch_event.y)) {
+                    nav_touch_handled = handle_nav_touch(screens, touch_event.x, store);
+                } else {
+                    // Check widgets on current page
+                    for (size_t widget_idx = 0; widget_idx < screen->widget_count; widget_idx++) {
+                        if (screen->widgets[widget_idx]->isTouching(&touch_event)) {
+                            ESP_LOGI(TAG, "Starting touch on widget %d", widget_idx);
+                            active_widget = widget_idx;
 
-                        store_send_command(store, screen->entity_ids[active_widget], widget_current_value);
+                            // Get the new value
+                            widget_original_value = ui_state->widget_values[widget_idx];
+                            widget_current_value = screen->widgets[widget_idx]->getValueFromTouch(&touch_event, widget_original_value);
 
-                        break;
+                            store_send_command(store, screen->entity_ids[active_widget], widget_current_value);
+
+                            break;
+                        }
                     }
                 }
             }
@@ -73,6 +116,7 @@ void touch_task(void* arg) {
                     ESP_LOGI(TAG, "End of touch");
                     touching = false;
                     active_widget = -1;
+                    nav_touch_handled = false;
                 }
                 vTaskDelay(pdMS_TO_TICKS(25));
             } else {

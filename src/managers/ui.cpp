@@ -35,10 +35,54 @@ void accumulate_damage(Rect& acc, const Rect& r) {
     acc.h = y2 - y1;
 }
 
+void ui_draw_page_indicator(FASTEPD* epaper, uint8_t current_page, uint8_t page_count, BitDepth depth) {
+    if (page_count <= 1) {
+        return;
+    }
+
+    uint8_t fill_color = (depth == BitDepth::BD_4BPP) ? 0xf : BBEP_WHITE;
+
+    // Calculate total width of indicator dots
+    uint16_t total_width = (page_count - 1) * PAGE_DOT_SPACING;
+    uint16_t start_x = DISPLAY_WIDTH / 2 - total_width / 2;
+    uint16_t y = DISPLAY_HEIGHT - NAV_BAR_HEIGHT / 2;
+
+    // Draw navigation arrows
+    uint16_t arrow_y = y;
+
+    // Left arrow (previous) - only if not on first page
+    if (current_page > 0) {
+        uint16_t arrow_x = 40;
+        epaper->fillTriangle(arrow_x, arrow_y, arrow_x + 15, arrow_y - 12, arrow_x + 15, arrow_y + 12, BBEP_BLACK);
+    }
+
+    // Right arrow (next) - only if not on last page
+    if (current_page < page_count - 1) {
+        uint16_t arrow_x = DISPLAY_WIDTH - 40;
+        epaper->fillTriangle(arrow_x, arrow_y, arrow_x - 15, arrow_y - 12, arrow_x - 15, arrow_y + 12, BBEP_BLACK);
+    }
+
+    // Draw page dots
+    for (uint8_t i = 0; i < page_count; i++) {
+        uint16_t x = start_x + i * PAGE_DOT_SPACING;
+        if (i == current_page) {
+            // Filled dot for current page
+            epaper->fillCircle(x, y, PAGE_DOT_RADIUS, BBEP_BLACK);
+        } else {
+            // Outlined dot for other pages
+            epaper->fillCircle(x, y, PAGE_DOT_RADIUS, BBEP_BLACK);
+            epaper->fillCircle(x, y, PAGE_DOT_RADIUS - 2, fill_color);
+        }
+    }
+}
+
 void ui_main_screen_full_draw(UIState* state, BitDepth depth, Screen* screen, FASTEPD* epaper) {
     for (uint8_t widget_idx = 0; widget_idx < screen->widget_count; widget_idx++) {
         screen->widgets[widget_idx]->fullDraw(epaper, depth, state->widget_values[widget_idx]);
     }
+
+    // Draw page indicator
+    ui_draw_page_indicator(epaper, state->current_page, state->page_count, depth);
 }
 
 void ui_show_message(UiMode mode, FASTEPD* epaper) {
@@ -82,23 +126,30 @@ void ui_task(void* arg) {
         }
 
         if (ulTaskNotifyTake(pdTRUE, notify_timeout)) {
-            store_update_ui_state(ctx->store, ctx->screen, &current_state);
+            // Get current page from screen manager
+            current_state.current_page = ctx->screens->current_page;
+            current_state.page_count = ctx->screens->page_count;
 
-            // Handle screen change
+            Screen* current_screen = screen_manager_get_current(ctx->screens);
+            store_update_ui_state(ctx->store, current_screen, &current_state);
+
+            // Handle screen change or page change
             size_t widget_idx;
-            if (current_state.mode != displayed_state.mode) {
+            bool page_changed = (current_state.current_page != displayed_state.current_page);
+
+            if (current_state.mode != displayed_state.mode || page_changed) {
                 ctx->epaper->setMode(BB_MODE_4BPP);
                 ctx->epaper->fillScreen(0xf);
 
                 if (current_state.mode == UiMode::MainScreen) {
                     // Display the main screen in its full glory
-                    ui_main_screen_full_draw(&current_state, BitDepth::BD_4BPP, ctx->screen, ctx->epaper);
+                    ui_main_screen_full_draw(&current_state, BitDepth::BD_4BPP, current_screen, ctx->epaper);
                     ctx->epaper->fullUpdate(CLEAR_SLOW, true);
 
                     // Preload the 1BPP version for fast updates
                     ctx->epaper->setMode(BB_MODE_1BPP);
                     ctx->epaper->fillScreen(BBEP_WHITE);
-                    ui_main_screen_full_draw(&displayed_state, BitDepth::BD_1BPP, ctx->screen, ctx->epaper);
+                    ui_main_screen_full_draw(&current_state, BitDepth::BD_1BPP, current_screen, ctx->epaper);
                     ctx->epaper->backupPlane();
                 } else {
                     ui_show_message(current_state.mode, ctx->epaper);
@@ -108,13 +159,13 @@ void ui_task(void* arg) {
             } else if (current_state.mode == UiMode::MainScreen) {
                 Rect damage_accum = {};
 
-                for (widget_idx = 0; widget_idx < ctx->screen->widget_count; widget_idx++) {
+                for (widget_idx = 0; widget_idx < current_screen->widget_count; widget_idx++) {
                     uint8_t displayed_value = displayed_state.widget_values[widget_idx];
                     uint8_t current_value = current_state.widget_values[widget_idx];
 
                     if (displayed_value != current_value) {
                         ESP_LOGI(TAG, "updating widget %d from %d to %d", widget_idx, displayed_value, current_value);
-                        Rect damage = ctx->screen->widgets[widget_idx]->partialDraw(ctx->epaper, BitDepth::BD_1BPP, displayed_value,
+                        Rect damage = current_screen->widgets[widget_idx]->partialDraw(ctx->epaper, BitDepth::BD_1BPP, displayed_value,
                                                                                     current_value);
                         accumulate_damage(damage_accum, damage);
                     }
@@ -135,16 +186,18 @@ void ui_task(void* arg) {
         } else if (display_is_dirty) {
             ESP_LOGI(TAG, "Forcing a full refresh of the display");
 
+            Screen* current_screen = screen_manager_get_current(ctx->screens);
+
             // Cleanup the display
             ctx->epaper->setMode(BB_MODE_4BPP);
             ctx->epaper->fillScreen(0xf);
-            ui_main_screen_full_draw(&displayed_state, BitDepth::BD_4BPP, ctx->screen, ctx->epaper);
+            ui_main_screen_full_draw(&displayed_state, BitDepth::BD_4BPP, current_screen, ctx->epaper);
             ctx->epaper->fullUpdate(CLEAR_FAST, true);
 
             // Preload the 1bpp version for fast updates
             ctx->epaper->setMode(BB_MODE_1BPP);
             ctx->epaper->fillScreen(BBEP_WHITE);
-            ui_main_screen_full_draw(&displayed_state, BitDepth::BD_1BPP, ctx->screen, ctx->epaper);
+            ui_main_screen_full_draw(&displayed_state, BitDepth::BD_1BPP, current_screen, ctx->epaper);
             ctx->epaper->backupPlane();
 
             display_is_dirty = false;

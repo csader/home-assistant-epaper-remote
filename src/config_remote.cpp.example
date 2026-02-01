@@ -5,7 +5,7 @@
 #include "screen.h"
 #include "store.h"
 
-void configure_remote(Configuration* config, EntityStore* store, Screen* screen) {
+void configure_remote(Configuration* config, EntityStore* store, ScreenManager* screens) {
     // Configure wifi
     config->wifi_ssid = "MyWifiSSID";
     config->wifi_password = "my-wifi-password1234!";
@@ -38,7 +38,11 @@ void configure_remote(Configuration* config, EntityStore* store, Screen* screen)
         .command_type = CommandType::AutomationOnOff,
     };
 
-    // Add widgets
+    // =========================================================================
+    // PAGE 1: Lights
+    // =========================================================================
+    Screen* page1 = screen_manager_add_page(screens);
+
     screen_add_slider(
         SliderConfig{
             .entity_ref = store_add_entity(store, living_room_lights),
@@ -50,7 +54,7 @@ void configure_remote(Configuration* config, EntityStore* store, Screen* screen)
             .width = DISPLAY_WIDTH - 60,
             .height = 170,
         },
-        screen);
+        page1);
 
     screen_add_slider(
         SliderConfig{
@@ -63,7 +67,7 @@ void configure_remote(Configuration* config, EntityStore* store, Screen* screen)
             .width = DISPLAY_WIDTH - 60,
             .height = 170,
         },
-        screen);
+        page1);
 
     screen_add_slider(
         SliderConfig{
@@ -76,7 +80,7 @@ void configure_remote(Configuration* config, EntityStore* store, Screen* screen)
             .width = DISPLAY_WIDTH - 60,
             .height = 170,
         },
-        screen);
+        page1);
 
     screen_add_button(
         ButtonConfig{
@@ -87,7 +91,7 @@ void configure_remote(Configuration* config, EntityStore* store, Screen* screen)
             .pos_x = 30,
             .pos_y = 660,
         },
-        screen);
+        page1);
 
     screen_add_button(
         ButtonConfig{
@@ -98,5 +102,36 @@ void configure_remote(Configuration* config, EntityStore* store, Screen* screen)
             .pos_x = 30,
             .pos_y = 800,
         },
-        screen);
+        page1);
+
+    // =========================================================================
+    // PAGE 2: Climate (example - uncomment and customize)
+    // =========================================================================
+    // Screen* page2 = screen_manager_add_page(screens);
+    //
+    // EntityConfig thermostat = {
+    //     .entity_id = "climate.thermostat",
+    //     .command_type = CommandType::SetLightBrightnessPercentage, // Use brightness for temp %
+    // };
+    //
+    // screen_add_slider(
+    //     SliderConfig{
+    //         .entity_ref = store_add_entity(store, thermostat),
+    //         .label = "Thermostat",
+    //         .icon_on = thermometer,
+    //         .icon_off = thermometer,
+    //         .pos_x = 30,
+    //         .pos_y = 30,
+    //         .width = DISPLAY_WIDTH - 60,
+    //         .height = 170,
+    //     },
+    //     page2);
+
+    // =========================================================================
+    // Navigation: When multiple pages are defined, a navigation bar appears
+    // at the bottom of the screen with:
+    // - Left arrow (< ) on left third - tap to go to previous page
+    // - Page indicator dots in center
+    // - Right arrow ( >) on right third - tap to go to next page
+    // =========================================================================
 }

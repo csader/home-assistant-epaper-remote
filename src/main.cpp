@@ -14,7 +14,7 @@
 static Configuration config;
 
 static FASTEPD epaper;
-static Screen screen;
+static ScreenManager screens;
 static BBCapTouch bbct;
 static EntityStore store;
 static SharedUIState shared_ui_state;
@@ -27,7 +27,8 @@ void setup() {
     // Initialize objects
     store_init(&store);
     ui_state_init(&shared_ui_state);
-    configure_remote(&config, &store, &screen);
+    screen_manager_init(&screens);
+    configure_remote(&config, &store, &screens);
     initialize_slider_sprites();
 
     // Initialize display
@@ -38,7 +39,7 @@ void setup() {
 
     // Launch UI task
     ui_task_args.epaper = &epaper;
-    ui_task_args.screen = &screen;
+    ui_task_args.screens = &screens;
     ui_task_args.store = &store;
     ui_task_args.shared_state = &shared_ui_state;
     xTaskCreate(ui_task, "ui", 2048, &ui_task_args, 1, &store.ui_task);
@@ -53,7 +54,7 @@ void setup() {
 
     // Launch touch task
     touch_task_args.bbct = &bbct;
-    touch_task_args.screen = &screen;
+    touch_task_args.screens = &screens;
     touch_task_args.state = &shared_ui_state;
     touch_task_args.store = &store;
     xTaskCreate(touch_task, "touch", 4096, &touch_task_args, 1, nullptr);

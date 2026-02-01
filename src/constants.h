@@ -30,5 +30,12 @@ constexpr uint32_t HASS_IGNORE_UPDATE_DELAY_MS = 1000;
 // Other constants
 constexpr size_t MAX_ENTITIES = 8;
 constexpr size_t MAX_WIDGETS_PER_SCREEN = 8;
+constexpr size_t MAX_PAGES = 4;
 constexpr uint32_t TOUCH_RELEASE_TIMEOUT_MS = 50;
 constexpr uint32_t DISPLAY_FULL_REDRAW_TIMEOUT_MS = 5000;
+
+// Navigation bar constants
+constexpr uint16_t NAV_BAR_HEIGHT = 60;
+constexpr uint16_t NAV_BUTTON_SIZE = 50;
+constexpr uint16_t PAGE_DOT_RADIUS = 8;
+constexpr uint16_t PAGE_DOT_SPACING = 30;
