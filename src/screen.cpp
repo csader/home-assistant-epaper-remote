@@ -46,10 +46,10 @@ void screen_add_slider(SliderConfig config, Screen* screen) {
     }
 
     Rect rect{
-        .x = (int16_t)config.pos_x,
-        .y = (int16_t)config.pos_y,
-        .w = (int16_t)config.width,
-        .h = (int16_t)config.height,
+        .x = config.pos_x,
+        .y = config.pos_y,
+        .w = config.width,
+        .h = config.height,
     };
 
     Slider* widget = new (std::nothrow) Slider(config.label, config.icon_on, config.icon_off, rect);
@@ -68,8 +68,8 @@ void screen_add_button(ButtonConfig config, Screen* screen) {
     }
 
     Rect rect{
-        .x = (int16_t)config.pos_x,
-        .y = (int16_t)config.pos_y,
+        .x = config.pos_x,
+        .y = config.pos_y,
         .w = 0, // ignored
         .h = 0, // ignored
     };

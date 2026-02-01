@@ -47,19 +47,30 @@ void ui_draw_page_indicator(FASTEPD* epaper, uint8_t current_page, uint8_t page_
     uint16_t start_x = DISPLAY_WIDTH / 2 - total_width / 2;
     uint16_t y = DISPLAY_HEIGHT - NAV_BAR_HEIGHT / 2;
 
-    // Draw navigation arrows
+    // Draw navigation arrows using chevrons (lines)
     uint16_t arrow_y = y;
+    uint8_t arrow_size = 12;
 
     // Left arrow (previous) - only if not on first page
     if (current_page > 0) {
         uint16_t arrow_x = 40;
-        epaper->fillTriangle(arrow_x, arrow_y, arrow_x + 15, arrow_y - 12, arrow_x + 15, arrow_y + 12, BBEP_BLACK);
+        // Draw < chevron
+        epaper->drawLine(arrow_x + arrow_size, arrow_y - arrow_size, arrow_x, arrow_y, BBEP_BLACK);
+        epaper->drawLine(arrow_x, arrow_y, arrow_x + arrow_size, arrow_y + arrow_size, BBEP_BLACK);
+        // Thicken
+        epaper->drawLine(arrow_x + arrow_size, arrow_y - arrow_size + 1, arrow_x + 1, arrow_y, BBEP_BLACK);
+        epaper->drawLine(arrow_x + 1, arrow_y, arrow_x + arrow_size, arrow_y + arrow_size - 1, BBEP_BLACK);
     }
 
     // Right arrow (next) - only if not on last page
     if (current_page < page_count - 1) {
         uint16_t arrow_x = DISPLAY_WIDTH - 40;
-        epaper->fillTriangle(arrow_x, arrow_y, arrow_x - 15, arrow_y - 12, arrow_x - 15, arrow_y + 12, BBEP_BLACK);
+        // Draw > chevron
+        epaper->drawLine(arrow_x - arrow_size, arrow_y - arrow_size, arrow_x, arrow_y, BBEP_BLACK);
+        epaper->drawLine(arrow_x, arrow_y, arrow_x - arrow_size, arrow_y + arrow_size, BBEP_BLACK);
+        // Thicken
+        epaper->drawLine(arrow_x - arrow_size, arrow_y - arrow_size + 1, arrow_x - 1, arrow_y, BBEP_BLACK);
+        epaper->drawLine(arrow_x - 1, arrow_y, arrow_x - arrow_size, arrow_y + arrow_size - 1, BBEP_BLACK);
     }
 
     // Draw page dots
