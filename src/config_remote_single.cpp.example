@@ -5,44 +5,55 @@
 #include "screen.h"
 #include "store.h"
 
+// Single-page configuration example
+// Copy this file to config_remote.cpp and customize for your setup
+
 void configure_remote(Configuration* config, EntityStore* store, ScreenManager* screens) {
-    // Configure wifi
+    // =========================================================================
+    // WiFi Configuration
+    // =========================================================================
     config->wifi_ssid = "MyWifiSSID";
     config->wifi_password = "my-wifi-password1234!";
 
-    // Configure home assistant
+    // =========================================================================
+    // Home Assistant Configuration
+    // =========================================================================
     // If you're using https, use wss://, otherwise use ws://
     config->home_assistant_url = "ws://192.168.0.1/api/websocket";
     config->home_assistant_token = "ey...";
     config->root_ca = ISRG_ROOT_X1; // You probably don't need to update this
 
-    // Declare home assistant entities
+    // =========================================================================
+    // Entity Declarations
+    // =========================================================================
     EntityConfig living_room_lights = {
-        .entity_id = "light.silicon_labs_ezsp_lampes_salon",
+        .entity_id = "light.living_room",
         .command_type = CommandType::SetLightBrightnessPercentage,
     };
     EntityConfig bedroom_lights = {
-        .entity_id = "light.silicon_labs_ezsp_lampes_chambre",
+        .entity_id = "light.bedroom",
         .command_type = CommandType::SetLightBrightnessPercentage,
     };
     EntityConfig air_purifier = {
-        .entity_id = "fan.ikea_of_sweden_starkvind_air_purifier_fan",
+        .entity_id = "fan.air_purifier",
         .command_type = CommandType::SetFanSpeedPercentage,
     };
     EntityConfig pc_lights = {
-        .entity_id = "switch.lampe_pc_switch",
+        .entity_id = "switch.pc_lights",
         .command_type = CommandType::SwitchOnOff,
     };
-    EntityConfig night_lights = EntityConfig{
-        .entity_id = "automation.lumiere_nuit",
+    EntityConfig night_mode = {
+        .entity_id = "automation.night_mode",
         .command_type = CommandType::AutomationOnOff,
     };
 
     // =========================================================================
-    // PAGE 1: Lights
+    // Screen Layout (Single Page)
     // =========================================================================
-    Screen* page1 = screen_manager_add_page(screens);
+    Screen* page = screen_manager_add_page(screens);
 
+    // Slider: Brightness control (0-100%)
+    // Height includes label text above the slider track
     screen_add_slider(
         SliderConfig{
             .entity_ref = store_add_entity(store, living_room_lights),
@@ -54,7 +65,7 @@ void configure_remote(Configuration* config, EntityStore* store, ScreenManager* 
             .width = DISPLAY_WIDTH - 60,
             .height = 170,
         },
-        page1);
+        page);
 
     screen_add_slider(
         SliderConfig{
@@ -67,7 +78,7 @@ void configure_remote(Configuration* config, EntityStore* store, ScreenManager* 
             .width = DISPLAY_WIDTH - 60,
             .height = 170,
         },
-        page1);
+        page);
 
     screen_add_slider(
         SliderConfig{
@@ -80,8 +91,9 @@ void configure_remote(Configuration* config, EntityStore* store, ScreenManager* 
             .width = DISPLAY_WIDTH - 60,
             .height = 170,
         },
-        page1);
+        page);
 
+    // Button: On/Off toggle (100x100 pixels)
     screen_add_button(
         ButtonConfig{
             .entity_ref = store_add_entity(store, pc_lights),
@@ -91,47 +103,16 @@ void configure_remote(Configuration* config, EntityStore* store, ScreenManager* 
             .pos_x = 30,
             .pos_y = 660,
         },
-        page1);
+        page);
 
     screen_add_button(
         ButtonConfig{
-            .entity_ref = store_add_entity(store, night_lights),
-            .label = "Night lights",
+            .entity_ref = store_add_entity(store, night_mode),
+            .label = "Night mode",
             .icon_on = robot_outline,
             .icon_off = robot_off_outline,
             .pos_x = 30,
             .pos_y = 800,
         },
-        page1);
-
-    // =========================================================================
-    // PAGE 2: Climate (example - uncomment and customize)
-    // =========================================================================
-    // Screen* page2 = screen_manager_add_page(screens);
-    //
-    // EntityConfig thermostat = {
-    //     .entity_id = "climate.thermostat",
-    //     .command_type = CommandType::SetLightBrightnessPercentage, // Use brightness for temp %
-    // };
-    //
-    // screen_add_slider(
-    //     SliderConfig{
-    //         .entity_ref = store_add_entity(store, thermostat),
-    //         .label = "Thermostat",
-    //         .icon_on = thermometer,
-    //         .icon_off = thermometer,
-    //         .pos_x = 30,
-    //         .pos_y = 30,
-    //         .width = DISPLAY_WIDTH - 60,
-    //         .height = 170,
-    //     },
-    //     page2);
-
-    // =========================================================================
-    // Navigation: When multiple pages are defined, a navigation bar appears
-    // at the bottom of the screen with:
-    // - Left arrow (< ) on left third - tap to go to previous page
-    // - Page indicator dots in center
-    // - Right arrow ( >) on right third - tap to go to next page
-    // =========================================================================
+        page);
 }
