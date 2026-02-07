@@ -3,3 +3,12 @@
 sdkconfig.*
 src/config_remote.cpp
 src/assets/icons.h
+
+# OS files
+.DS_Store
+
+# Backup files
+*.backup
+
+# Generated files
+tools/icons-manifest.json

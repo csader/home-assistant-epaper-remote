@@ -1,0 +1,1925 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home Assistant ePaper Remote Configurator</title>
+    <style>
+        :root {
+            --bg: #1a1a2e;
+            --surface: #16213e;
+            --surface2: #0f3460;
+            --accent: #e94560;
+            --text: #eaeaea;
+            --text-muted: #888;
+            --border: #333;
+            --success: #27ae60;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 420px 1fr;
+            height: 100vh;
+        }
+        .sidebar {
+            background: var(--surface);
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 1px solid var(--border);
+        }
+        .preview-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: var(--bg);
+        }
+        h1 { font-size: 1.4em; margin-bottom: 20px; color: var(--accent); }
+        h2 { font-size: 1.1em; margin: 20px 0 10px; color: var(--text); border-bottom: 1px solid var(--border); padding-bottom: 5px; }
+        h3 { font-size: 0.95em; margin: 15px 0 8px; color: var(--text-muted); }
+
+        .tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 8px 16px;
+            background: var(--surface2);
+            border: none;
+            color: var(--text);
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+        .tab.active { background: var(--accent); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        label {
+            display: block;
+            font-size: 0.85em;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+        input[type="text"], input[type="password"], input[type="number"], select, textarea {
+            width: 100%;
+            padding: 8px 10px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 4px;
+            margin-bottom: 12px;
+            font-size: 0.9em;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        textarea { resize: vertical; min-height: 60px; font-family: monospace; }
+
+        button {
+            padding: 8px 16px;
+            background: var(--accent);
+            border: none;
+            color: white;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 0.9em;
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }
+        button:hover { opacity: 0.9; }
+        button.secondary { background: var(--surface2); }
+        button.small { padding: 4px 10px; font-size: 0.8em; }
+        button.danger { background: #c0392b; }
+
+        .card {
+            background: var(--surface2);
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+
+        .info-box {
+            background: var(--surface2);
+            border-left: 3px solid var(--accent);
+            padding: 12px;
+            margin-bottom: 15px;
+            font-size: 0.85em;
+            line-height: 1.5;
+        }
+        .info-box code {
+            background: var(--bg);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+        .info-box a {
+            color: var(--accent);
+        }
+
+        .icon-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .icon-item {
+            aspect-ratio: 1;
+            background: white;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: 2px solid transparent;
+            position: relative;
+        }
+        .icon-item:hover { border-color: var(--accent); }
+        .icon-item.selected { border-color: var(--accent); }
+        .icon-item img { max-width: 80%; max-height: 80%; }
+        .icon-name {
+            font-size: 0.7em;
+            color: var(--text-muted);
+            text-align: center;
+            margin-top: 4px;
+            word-break: break-all;
+        }
+
+        .preview-canvas {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        .preview-label {
+            margin-top: 15px;
+            color: var(--text-muted);
+            font-size: 0.85em;
+        }
+
+        .page-tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        .page-tab {
+            padding: 6px 12px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 0.85em;
+        }
+        .page-tab.active { background: var(--accent); border-color: var(--accent); }
+        .page-tab .remove {
+            margin-left: 6px;
+            opacity: 0.6;
+        }
+        .page-tab .remove:hover { opacity: 1; }
+
+        .widget-list { margin-top: 10px; }
+        .widget-item {
+            background: var(--bg);
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 8px;
+        }
+        .widget-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .widget-type {
+            font-size: 0.75em;
+            background: var(--surface2);
+            padding: 2px 8px;
+            border-radius: 3px;
+        }
+        .inline-fields {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        .inline-fields label { margin-bottom: 2px; }
+        .inline-fields input, .inline-fields select { margin-bottom: 0; }
+
+        .icon-select-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            text-align: left;
+        }
+        .icon-select-btn:hover { border-color: var(--accent); }
+        .icon-select-btn img { width: 24px; height: 24px; background: white; border-radius: 2px; }
+
+        .export-buttons {
+            position: sticky;
+            bottom: 0;
+            background: var(--surface);
+            padding: 15px 0;
+            border-top: 1px solid var(--border);
+            margin-top: 20px;
+            z-index: 10;
+            margin-left: -20px;
+            margin-right: -20px;
+            padding-left: 20px;
+            padding-right: 20px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: var(--surface);
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 700px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal-content pre {
+            background: var(--bg);
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 0.8em;
+            max-height: 400px;
+        }
+
+        .status {
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-size: 0.85em;
+        }
+        .status.success { background: rgba(39, 174, 96, 0.2); border: 1px solid var(--success); }
+        .status.error { background: rgba(192, 57, 43, 0.2); border: 1px solid #c0392b; }
+        .status.warning { background: rgba(241, 196, 15, 0.2); border: 1px solid #f1c40f; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h1>ePaper Remote Configurator</h1>
+
+            <div class="tabs">
+                <button class="tab active" data-tab="connection">Connection</button>
+                <button class="tab" data-tab="pages">Pages</button>
+            </div>
+
+            <!-- Connection Tab -->
+            <div id="tab-connection" class="tab-content active">
+                <h2>WiFi</h2>
+                <label>SSID</label>
+                <input type="text" id="wifi-ssid" placeholder="Your WiFi network name">
+                <label>Password</label>
+                <input type="password" id="wifi-password" placeholder="WiFi password">
+
+                <h2>Home Assistant</h2>
+                <label>WebSocket URL</label>
+                <div style="display: flex; align-items: center; gap: 0; margin-bottom: 12px;">
+                    <select id="ha-protocol" style="width: auto; margin-bottom: 0; border-radius: 4px 0 0 4px; border-right: none;">
+                        <option value="ws://">ws://</option>
+                        <option value="wss://">wss://</option>
+                    </select>
+                    <input type="text" id="ha-host" placeholder="192.168.1.100:8123" style="flex: 1; margin-bottom: 0; border-radius: 0;">
+                    <span style="background: var(--bg); border: 1px solid var(--border); border-left: none; padding: 8px 10px; border-radius: 0 4px 4px 0; color: var(--text-muted); font-size: 0.9em; white-space: nowrap;">/api/websocket</span>
+                </div>
+                <label>Long-Lived Access Token</label>
+                <textarea id="ha-token" placeholder="Paste your token here"></textarea>
+            </div>
+
+            <!-- Pages Tab -->
+            <div id="tab-pages" class="tab-content">
+                <h2>Pages</h2>
+                
+                <h3>Navigation Mode</h3>
+                <select id="nav-mode">
+                    <option value="tabs">Tabs (text buttons)</option>
+                    <option value="carousel">Carousel (arrows + dots)</option>
+                </select>
+
+                <h3 style="margin-top: 20px;">Page List</h3>
+                <div class="page-tabs" id="page-tabs"></div>
+                <button class="secondary" onclick="addPage()">+ Add Page</button>
+
+                <div id="page-editor"></div>
+            </div>
+
+            <div class="export-buttons">
+                <div id="icons-status"></div>
+                <div id="project-folder-status" style="font-size: 0.8em; color: var(--text-muted); margin-bottom: 10px; cursor: pointer;" onclick="showWelcomeModal()"></div>
+                <button onclick="exportConfig()">Export Configuration</button>
+                <button class="secondary" onclick="importConfig()">Import from File</button>
+            </div>
+        </div>
+
+        <div class="preview-area">
+            <canvas id="preview" class="preview-canvas" width="270" height="480"></canvas>
+            <div class="preview-label">Preview (50% scale) - 540 x 960</div>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div class="modal" id="export-modal">
+        <div class="modal-content">
+            <h2 id="modal-title">Export</h2>
+            <pre id="modal-code"></pre>
+            <br>
+            <button onclick="copyToClipboard()">Copy to Clipboard</button>
+            <button onclick="downloadFile()">Download</button>
+            <button class="secondary" onclick="closeModal()">Close</button>
+        </div>
+    </div>
+
+    <!-- Welcome Modal -->
+    <div class="modal" id="welcome-modal">
+        <div class="modal-content" style="max-width: 450px; text-align: center;">
+            <h2 style="margin-bottom: 20px;">ePaper Remote Configurator</h2>
+            <p style="color: var(--text-muted); margin-bottom: 25px;">
+                Select your project folder to enable direct export, or start fresh.
+            </p>
+            <button onclick="handleSelectProjectFolder()">Select Project Folder</button>
+            <button class="secondary" onclick="handleStartFresh()">Start Fresh</button>
+        </div>
+    </div>
+
+    <!-- Import Prompt Modal -->
+    <div class="modal" id="import-modal">
+        <div class="modal-content" style="max-width: 450px; text-align: center;">
+            <h2 style="margin-bottom: 20px;">Existing Configuration Found</h2>
+            <p style="color: var(--text-muted); margin-bottom: 25px;">
+                Found <code>config_remote.cpp</code> in the project folder.
+            </p>
+            <button onclick="handleImportExisting()">Import Existing Config</button>
+            <button class="secondary" onclick="handleStartNew()">Start New Config</button>
+        </div>
+    </div>
+
+    <!-- Icon Picker Modal -->
+    <div class="modal" id="icon-picker-modal">
+        <div class="modal-content" style="max-width: 800px; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column;">
+            <h2>Select Icon from Material Design Icons</h2>
+            <input type="text" id="icon-search" placeholder="Search icons..." style="margin-bottom: 15px;" oninput="filterMDIIcons(this.value)">
+            <div id="icon-picker-status" style="margin-bottom: 10px; font-size: 0.85em; color: var(--text-muted);"></div>
+            <div id="icon-picker-grid" style="overflow-y: auto; flex: 1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 5px;"></div>
+            <br>
+            <button class="secondary" onclick="closeIconPicker()">Cancel</button>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        // State
+        // ============================================================
+        const state = {
+            pages: [],
+            currentPage: 0,
+            icons: [], // {name, preview} loaded from manifest
+            mdiIcons: [], // {name} from MDI API
+            mdiIconsFiltered: [],
+            selectedIcons: new Set(), // Track which MDI icons are used
+        };
+
+        let iconPickerCallback = null;
+        let currentExport = { filename: '', content: '' };
+        let projectDirHandle = null; // File System Access API handle
+
+        // IndexedDB helpers for persisting directory handle
+        const DB_NAME = 'epaper-configurator';
+        const STORE_NAME = 'settings';
+
+        async function openDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, 1);
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => resolve(request.result);
+                request.onupgradeneeded = (e) => {
+                    e.target.result.createObjectStore(STORE_NAME);
+                };
+            });
+        }
+
+        async function saveDirectoryHandle(handle) {
+            try {
+                const db = await openDB();
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                tx.objectStore(STORE_NAME).put(handle, 'projectDir');
+                await tx.complete;
+            } catch (err) {
+                // IndexedDB not available - handle won't persist across sessions
+            }
+        }
+
+        async function loadDirectoryHandle() {
+            try {
+                const db = await openDB();
+                const tx = db.transaction(STORE_NAME, 'readonly');
+                const handle = await new Promise((resolve, reject) => {
+                    const request = tx.objectStore(STORE_NAME).get('projectDir');
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+
+                if (handle) {
+                    // Verify we still have permission
+                    const permission = await handle.queryPermission({ mode: 'readwrite' });
+                    if (permission === 'granted') {
+                        projectDirHandle = handle;
+                        return true;
+                    }
+                    // Try to request permission
+                    const newPermission = await handle.requestPermission({ mode: 'readwrite' });
+                    if (newPermission === 'granted') {
+                        projectDirHandle = handle;
+                        return true;
+                    }
+                }
+            } catch (err) {
+                // Could not restore - will show welcome modal
+            }
+            return false;
+        }
+
+        // ============================================================
+        // Initialization
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', async () => {
+            initTabs();
+            loadIcons();
+            loadMDIIcons();
+            addPage(); // Start with one page
+            render();
+
+            // Try to restore saved project folder
+            const restored = await loadDirectoryHandle();
+            updateFolderStatus();
+
+            if (!restored) {
+                // No saved folder, show welcome modal
+                showWelcomeModal();
+            }
+            // If restored, just continue with blank config
+            // User can import manually if needed
+        });
+
+        function initTabs() {
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    tab.classList.add('active');
+                    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+                });
+            });
+
+            // Event delegation for widget selects (fixes dropdown issues)
+            document.addEventListener('change', (e) => {
+                if (e.target.matches('select[data-widget-index]')) {
+                    const index = parseInt(e.target.dataset.widgetIndex);
+                    const field = e.target.dataset.field;
+                    const value = e.target.value;
+                    updateWidget(index, field, value);
+                }
+            });
+        }
+
+        // ============================================================
+        // Icon Loading
+        // ============================================================
+        async function loadIcons() {
+            try {
+                const response = await fetch('icons-manifest.json');
+                if (!response.ok) {
+                    throw new Error('Manifest not found');
+                }
+
+                const manifest = await response.json();
+                state.icons = manifest.widgetIcons || [];
+            } catch (err) {
+                // Manifest is optional - will use MDI icons instead
+                state.icons = [];
+            }
+        }
+
+        function reloadIcons() {
+            loadIcons();
+        }
+
+        // ============================================================
+        // Icon Generation
+        // ============================================================
+        async function generateIcons() {
+            const statusEl = document.getElementById('icons-status');
+            statusEl.innerHTML = '<div class="status">Select icons-buttons folder...</div>';
+
+            try {
+                const dirHandle = await window.showDirectoryPicker();
+                const files = [];
+                
+                for await (const entry of dirHandle.values()) {
+                    if (entry.kind === 'file' && entry.name.endsWith('.png')) {
+                        files.push(entry);
+                    }
+                }
+
+                if (files.length === 0) {
+                    statusEl.innerHTML = '<div class="status warning">No PNG files found in selected folder</div>';
+                    return;
+                }
+
+                statusEl.innerHTML = `<div class="status">Processing ${files.length} icons...</div>`;
+
+                const manifest = [];
+                let headerContent = `// AUTO-GENERATED FILE — DO NOT EDIT
+#pragma once
+#include <pgmspace.h>
+#include <cstdint>
+#include <cstddef>
+
+`;
+
+                for (const fileHandle of files.sort((a, b) => a.name.localeCompare(b.name))) {
+                    const file = await fileHandle.getFile();
+                    const name = fileHandle.name.replace('.png', '').replace(/[-\s]/g, '_');
+                    
+                    const { bmpBytes, preview } = await processIconImage(file, 64, 64);
+                    headerContent += bmpToCArray(name, bmpBytes);
+                    headerContent += '\n';
+                    
+                    manifest.push({ name, preview, size: 64 });
+                }
+
+                // Save icons.h
+                const iconsBlob = new Blob([headerContent], { type: 'text/plain' });
+                const iconsUrl = URL.createObjectURL(iconsBlob);
+                const a = document.createElement('a');
+                a.href = iconsUrl;
+                a.download = 'icons.h';
+                a.click();
+                URL.revokeObjectURL(iconsUrl);
+
+                // Save manifest
+                const manifestBlob = new Blob([JSON.stringify({ widgetIcons: manifest, uiIcons: [] }, null, 2)], { type: 'application/json' });
+                const manifestUrl = URL.createObjectURL(manifestBlob);
+                const a2 = document.createElement('a');
+                a2.href = manifestUrl;
+                a2.download = 'icons-manifest.json';
+                a2.click();
+                URL.revokeObjectURL(manifestUrl);
+
+                // Load the new icons
+                state.icons = manifest;
+                renderIconsGrid();
+                render();
+
+                statusEl.innerHTML = `<div class="status success">Generated ${manifest.length} icons! Download icons.h to src/assets/ and icons-manifest.json to tools/</div>`;
+            } catch (err) {
+                if (err.name === 'AbortError') {
+                    statusEl.innerHTML = '<div class="status">Cancelled</div>';
+                } else {
+                    statusEl.innerHTML = `<div class="status warning">Error: ${err.message}</div>`;
+                    console.error(err);
+                }
+            }
+        }
+
+        async function processIconImage(file, width, height) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                const reader = new FileReader();
+
+                reader.onload = (e) => {
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+
+                        // White background
+                        ctx.fillStyle = 'white';
+                        ctx.fillRect(0, 0, width, height);
+
+                        // Draw resized image
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        // Get image data and convert to 1-bit
+                        const imageData = ctx.getImageData(0, 0, width, height);
+                        const pixels = imageData.data;
+
+                        for (let i = 0; i < pixels.length; i += 4) {
+                            const gray = pixels[i] * 0.299 + pixels[i + 1] * 0.587 + pixels[i + 2] * 0.114;
+                            const bw = gray < 128 ? 0 : 255;
+                            pixels[i] = pixels[i + 1] = pixels[i + 2] = bw;
+                        }
+
+                        ctx.putImageData(imageData, 0, 0);
+
+                        // Generate BMP
+                        const bmpBytes = canvasToBMP(canvas);
+                        const preview = canvas.toDataURL('image/png');
+
+                        resolve({ bmpBytes, preview });
+                    };
+                    img.onerror = reject;
+                    img.src = e.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function canvasToBMP(canvas) {
+            const width = canvas.width;
+            const height = canvas.height;
+            const ctx = canvas.getContext('2d');
+            const imageData = ctx.getImageData(0, 0, width, height);
+            
+            const rowSize = Math.floor((1 * width + 31) / 32) * 4;
+            const pixelArraySize = rowSize * height;
+            const fileSize = 62 + pixelArraySize;
+            
+            const bmp = new Uint8Array(fileSize);
+            const view = new DataView(bmp.buffer);
+            
+            // BMP Header
+            bmp[0] = 0x42; bmp[1] = 0x4D; // "BM"
+            view.setUint32(2, fileSize, true);
+            view.setUint32(10, 62, true); // Pixel data offset
+            
+            // DIB Header
+            view.setUint32(14, 40, true); // Header size
+            view.setInt32(18, width, true);
+            view.setInt32(22, -height, true); // Negative = top-down
+            view.setUint16(26, 1, true); // Planes
+            view.setUint16(28, 1, true); // Bits per pixel
+            view.setUint32(34, pixelArraySize, true);
+            
+            // Color table (black and white)
+            view.setUint32(54, 0x00000000, true); // Black
+            view.setUint32(58, 0x00FFFFFF, true); // White
+            
+            // Pixel data
+            let offset = 62;
+            for (let y = 0; y < height; y++) {
+                let bitIndex = 0;
+                let currentByte = 0;
+                
+                for (let x = 0; x < width; x++) {
+                    const pixelIndex = (y * width + x) * 4;
+                    const bit = imageData.data[pixelIndex] > 127 ? 1 : 0;
+                    currentByte |= (bit << (7 - bitIndex));
+                    bitIndex++;
+                    
+                    if (bitIndex === 8) {
+                        bmp[offset++] = currentByte;
+                        currentByte = 0;
+                        bitIndex = 0;
+                    }
+                }
+                
+                if (bitIndex > 0) {
+                    bmp[offset++] = currentByte;
+                }
+                
+                // Padding
+                while ((offset - 62) % rowSize !== (y + 1) * rowSize % rowSize) {
+                    bmp[offset++] = 0;
+                }
+            }
+            
+            return bmp;
+        }
+
+        function bmpToCArray(name, bmpBytes) {
+            const hexBytes = Array.from(bmpBytes).map(b => `0x${b.toString(16).toUpperCase().padStart(2, '0')}`).join(', ');
+            return `const uint8_t ${name}[] PROGMEM = { ${hexBytes} };\nconst size_t ${name}_len = ${bmpBytes.length};\n`;
+        }
+
+        async function generateIconsH(iconNames) {
+            // Process single icon - returns {name, bmpBytes} or null on error
+            async function processIcon(iconName) {
+                try {
+                    const response = await fetch(`https://cdn.jsdelivr.net/npm/@mdi/svg@latest/svg/${iconName}.svg`);
+                    if (!response.ok) throw new Error(`Failed to fetch ${iconName}`);
+                    const svgText = await response.text();
+                    const svgDataUrl = 'data:image/svg+xml,' + encodeURIComponent(svgText);
+
+                    const { bmpBytes } = await new Promise((resolve, reject) => {
+                        const timeout = setTimeout(() => reject(new Error(`Timeout`)), 10000);
+                        const img = new Image();
+                        img.onload = async () => {
+                            clearTimeout(timeout);
+                            try {
+                                resolve(await processIconImageFromElement(img, 64, 64));
+                            } catch (err) { reject(err); }
+                        };
+                        img.onerror = () => { clearTimeout(timeout); reject(new Error(`Load failed`)); };
+                        img.src = svgDataUrl;
+                    });
+
+                    return { name: iconName, bmpBytes };
+                } catch (err) {
+                    console.error(`Failed to generate icon ${iconName}:`, err.message);
+                    return null;
+                }
+            }
+
+            // Fetch all icons in parallel
+            const results = await Promise.all(iconNames.map(processIcon));
+
+            // Build header from successful results (sorted by name)
+            let headerContent = `// AUTO-GENERATED FILE — DO NOT EDIT
+#pragma once
+#include <pgmspace.h>
+#include <cstdint>
+#include <cstddef>
+
+`;
+            results
+                .filter(r => r !== null)
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .forEach(({ name, bmpBytes }) => {
+                    const varName = name.replace(/-/g, '_');
+                    headerContent += bmpToCArray(varName, bmpBytes);
+                    headerContent += '\n';
+                });
+
+            // Try to write directly to project folder
+            if (projectDirHandle || window.showDirectoryPicker) {
+                await writeFileToProject('src/assets/icons.h', headerContent);
+            } else {
+                // Fallback to download
+                const blob = new Blob([headerContent], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'icons.h';
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+        }
+
+        async function processIconImageFromElement(img, width, height) {
+            return new Promise((resolve) => {
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+
+                // White background
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, width, height);
+
+                // Draw resized image
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // Get image data and convert to 1-bit
+                const imageData = ctx.getImageData(0, 0, width, height);
+                const pixels = imageData.data;
+
+                for (let i = 0; i < pixels.length; i += 4) {
+                    const gray = pixels[i] * 0.299 + pixels[i + 1] * 0.587 + pixels[i + 2] * 0.114;
+                    const bw = gray < 128 ? 0 : 255;
+                    pixels[i] = pixels[i + 1] = pixels[i + 2] = bw;
+                }
+
+                ctx.putImageData(imageData, 0, 0);
+
+                // Generate BMP
+                const bmpBytes = canvasToBMP(canvas);
+                const preview = canvas.toDataURL('image/png');
+
+                resolve({ bmpBytes, preview });
+            });
+        }
+
+        function renderIconsGrid() {
+            // This function is no longer used - icons are shown in the picker modal
+        }
+
+        // ============================================================
+        // Page Management
+        // ============================================================
+        function addPage() {
+            const pageNum = state.pages.length + 1;
+            state.pages.push({
+                label: `Page ${pageNum}`,
+                widgets: []
+            });
+            state.currentPage = state.pages.length - 1;
+            render();
+        }
+
+        function removePage(index) {
+            if (state.pages.length <= 1) return;
+            state.pages.splice(index, 1);
+            if (state.currentPage >= state.pages.length) {
+                state.currentPage = state.pages.length - 1;
+            }
+            render();
+        }
+
+        function selectPage(index) {
+            state.currentPage = index;
+            render();
+        }
+
+        // ============================================================
+        // Widget Management
+        // ============================================================
+        // Slider layout matches firmware: label at top, 100px bar at bottom
+        // Total height = 170 gives ~10px gap between label text and bar
+        const SLIDER_HEIGHT = 170;
+        const BUTTON_SIZE_FIRMWARE = 100; // Firmware's fixed slider bar height
+
+        function getWidgetHeight(widget) {
+            if (widget.type === 'button') return 100;
+            return SLIDER_HEIGHT;
+        }
+
+        function addWidget(type) {
+            const page = state.pages[state.currentPage];
+
+            // Calculate Y position: below the last widget with 20px gap
+            let posY = 30; // Default top margin
+            if (page.widgets.length > 0) {
+                const lastWidget = page.widgets[page.widgets.length - 1];
+                posY = lastWidget.pos_y + getWidgetHeight(lastWidget) + 20;
+            }
+
+            const widget = {
+                type,
+                entity_id: '',
+                command_type: type === 'button' ? 'SwitchOnOff' : 'SetLightBrightnessPercentage',
+                label: type === 'button' ? 'Button' : 'Slider',
+                icon_on: 'lightbulb-outline',
+                icon_off: 'lightbulb-off-outline',
+                pos_x: 30,
+                pos_y: posY,
+                width: type === 'slider' ? 480 : 100
+            };
+            page.widgets.push(widget);
+            render();
+        }
+
+        function removeWidget(index) {
+            const page = state.pages[state.currentPage];
+            page.widgets.splice(index, 1);
+
+            // Reflow: recalculate Y positions for all widgets
+            let posY = 30;
+            for (const widget of page.widgets) {
+                widget.pos_y = posY;
+                posY += getWidgetHeight(widget) + 20;
+            }
+
+            render();
+        }
+
+        function updateWidget(index, field, value) {
+            const widget = state.pages[state.currentPage].widgets[index];
+            if (!widget) return;
+            if (field === 'pos_x' || field === 'pos_y' || field === 'width') {
+                widget[field] = parseInt(value) || 0;
+            } else {
+                widget[field] = value;
+            }
+            // Full render for icon changes (to show new icon in button)
+            // Preview-only render for other fields (prevents dropdown issues)
+            if (field === 'icon_on' || field === 'icon_off') {
+                render();
+            } else {
+                renderPreview();
+            }
+        }
+
+        function updatePageLabel(index, label) {
+            state.pages[index].label = label;
+            render();
+        }
+
+        // ============================================================
+        // Icon Picker
+        // ============================================================
+        async function loadMDIIcons() {
+            try {
+                const response = await fetch('https://cdn.jsdelivr.net/npm/@mdi/svg@latest/meta.json');
+                const data = await response.json();
+                state.mdiIcons = data.map(icon => ({
+                    name: icon.name,
+                    aliases: icon.aliases || []
+                }));
+                state.mdiIconsFiltered = state.mdiIcons;
+            } catch (err) {
+                state.mdiIcons = [];
+            }
+        }
+
+        function filterMDIIcons(query) {
+            const q = query.toLowerCase().trim();
+            if (!q) {
+                state.mdiIconsFiltered = state.mdiIcons;
+            } else {
+                state.mdiIconsFiltered = state.mdiIcons.filter(icon => 
+                    icon.name.includes(q) || icon.aliases.some(a => a.includes(q))
+                );
+            }
+            renderIconPickerGrid();
+        }
+
+        function openIconPicker(callback) {
+            if (state.mdiIcons.length === 0) {
+                alert('Loading icons... Please wait a moment and try again.');
+                return;
+            }
+
+            iconPickerCallback = callback;
+            document.getElementById('icon-search').value = '';
+            state.mdiIconsFiltered = state.mdiIcons;
+            renderIconPickerGrid();
+            document.getElementById('icon-picker-modal').classList.add('active');
+        }
+
+        function renderIconPickerGrid() {
+            const grid = document.getElementById('icon-picker-grid');
+            const status = document.getElementById('icon-picker-status');
+            const icons = state.mdiIconsFiltered;
+            
+            status.textContent = `Showing ${icons.length} icons`;
+            
+            // Render all icons with lazy loading
+            grid.innerHTML = icons.map(icon => `
+                <div style="text-align: center; cursor: pointer;" onclick="selectMDIIcon('${icon.name}')" title="${icon.name}">
+                    <div style="width: 48px; height: 48px; background: white; border-radius: 4px; display: flex; align-items: center; justify-content: center; padding: 6px; border: 2px solid transparent; margin: 0 auto;">
+                        <img src="https://cdn.jsdelivr.net/npm/@mdi/svg@latest/svg/${icon.name}.svg" alt="${icon.name}" loading="lazy" style="width: 100%; height: 100%; object-fit: contain;">
+                    </div>
+                    <div style="font-size: 0.65em; color: var(--text-muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${icon.name}</div>
+                </div>
+            `).join('');
+        }
+
+        function selectMDIIcon(name) {
+            if (iconPickerCallback) {
+                state.selectedIcons.add(name);
+                iconPickerCallback(name);
+                iconPickerCallback = null;
+            }
+            closeIconPicker();
+        }
+
+        function selectIcon(name) {
+            if (iconPickerCallback) {
+                iconPickerCallback(name);
+                iconPickerCallback = null;
+            }
+            closeIconPicker();
+        }
+
+        function closeIconPicker() {
+            document.getElementById('icon-picker-modal').classList.remove('active');
+        }
+
+        // ============================================================
+        // Rendering
+        // ============================================================
+        function render() {
+            renderPageTabs();
+            renderPageEditor();
+            renderPreview();
+        }
+
+        function renderPageTabs() {
+            const container = document.getElementById('page-tabs');
+            container.innerHTML = state.pages.map((page, i) => `
+                <div class="page-tab ${i === state.currentPage ? 'active' : ''}" onclick="selectPage(${i})">
+                    ${page.label}
+                    ${state.pages.length > 1 ? `<span class="remove" onclick="event.stopPropagation(); removePage(${i})">×</span>` : ''}
+                </div>
+            `).join('');
+        }
+
+        function renderPageEditor() {
+            const container = document.getElementById('page-editor');
+            const page = state.pages[state.currentPage];
+            if (!page) return;
+
+            container.innerHTML = `
+                <h3>Page Settings</h3>
+                <label>Tab Label</label>
+                <input type="text" value="${page.label}" onchange="updatePageLabel(${state.currentPage}, this.value)">
+
+                <h3>Widgets</h3>
+                <button class="small" onclick="addWidget('button')">+ Button</button>
+                <button class="small" onclick="addWidget('slider')">+ Slider</button>
+
+                <div class="widget-list">
+                    ${page.widgets.map((w, i) => renderWidgetEditor(w, i)).join('')}
+                </div>
+            `;
+        }
+
+        function renderWidgetEditor(widget, index) {
+            const getIconPreview = (iconName) => {
+                if (!iconName) return '';
+                // Check if it's from local manifest
+                const localIcon = state.icons.find(ic => ic.name === iconName);
+                if (localIcon) return localIcon.preview;
+                // Otherwise it's from MDI
+                return `https://cdn.jsdelivr.net/npm/@mdi/svg@latest/svg/${iconName}.svg`;
+            };
+
+            const iconOnPreview = getIconPreview(widget.icon_on);
+            const iconOffPreview = getIconPreview(widget.icon_off);
+
+            return `
+                <div class="widget-item">
+                    <div class="widget-header">
+                        <span class="widget-type">${widget.type.toUpperCase()}</span>
+                        <button class="small danger" onclick="removeWidget(${index})">Remove</button>
+                    </div>
+
+                    <label>Label</label>
+                    <input type="text" value="${widget.label}" onchange="updateWidget(${index}, 'label', this.value)">
+
+                    <label>Entity ID</label>
+                    <input type="text" value="${widget.entity_id}" placeholder="light.living_room" onchange="updateWidget(${index}, 'entity_id', this.value)" >
+
+                    <label>Command Type</label>
+                    <select data-widget-index="${index}" data-field="command_type">
+                        <option value="SwitchOnOff" ${widget.command_type === 'SwitchOnOff' ? 'selected' : ''}>Switch On/Off</option>
+                        <option value="SetLightBrightnessPercentage" ${widget.command_type === 'SetLightBrightnessPercentage' ? 'selected' : ''}>Light Brightness</option>
+                        <option value="SetFanSpeedPercentage" ${widget.command_type === 'SetFanSpeedPercentage' ? 'selected' : ''}>Fan Speed</option>
+                        <option value="SetCoverPosition" ${widget.command_type === 'SetCoverPosition' ? 'selected' : ''}>Cover Position</option>
+                        <option value="AutomationOnOff" ${widget.command_type === 'AutomationOnOff' ? 'selected' : ''}>Automation On/Off</option>
+                    </select>
+
+                    <div class="inline-fields">
+                        <div>
+                            <label>Icon On</label>
+                            <button class="icon-select-btn" onclick="openIconPicker(name => updateWidget(${index}, 'icon_on', name))">
+                                ${iconOnPreview ? `<img src="${iconOnPreview}">` : ''}<span>${widget.icon_on || 'Select...'}</span>
+                            </button>
+                        </div>
+                        <div>
+                            <label>Icon Off</label>
+                            <button class="icon-select-btn" onclick="openIconPicker(name => updateWidget(${index}, 'icon_off', name))">
+                                ${iconOffPreview ? `<img src="${iconOffPreview}">` : ''}<span>${widget.icon_off || 'Select...'}</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="inline-fields" style="margin-top:10px">
+                        <div>
+                            <label>X Position</label>
+                            <input type="number" value="${widget.pos_x}" onchange="updateWidget(${index}, 'pos_x', this.value)">
+                        </div>
+                        <div>
+                            <label>Y Position</label>
+                            <input type="number" value="${widget.pos_y}" onchange="updateWidget(${index}, 'pos_y', this.value)">
+                        </div>
+                    </div>
+                    ${widget.type === 'slider' ? `
+                    <div class="inline-fields">
+                        <div>
+                            <label>Width</label>
+                            <input type="number" value="${widget.width}" onchange="updateWidget(${index}, 'width', this.value)">
+                        </div>
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        function renderPreview() {
+            const canvas = document.getElementById('preview');
+            const ctx = canvas.getContext('2d');
+            const scale = 0.5;
+            const W = 540, H = 960;
+
+            // Clear
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const page = state.pages[state.currentPage];
+            if (!page) return;
+
+            ctx.save();
+            ctx.scale(scale, scale);
+
+            // Draw widgets
+            for (const widget of page.widgets) {
+                drawWidgetPreview(ctx, widget);
+            }
+
+            // Draw navigation if multiple pages
+            if (state.pages.length > 1) {
+                const navMode = document.getElementById('nav-mode').value;
+                if (navMode === 'tabs') {
+                    drawTabsNav(ctx, W, H);
+                } else {
+                    drawCarouselNav(ctx, W, H);
+                }
+            }
+
+            ctx.restore();
+        }
+
+        // Cache for loaded images to prevent infinite re-renders
+        const imageCache = new Map();
+
+        function getOrLoadImage(src, callback) {
+            if (!src) return null;
+            if (imageCache.has(src)) {
+                return imageCache.get(src);
+            }
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+                imageCache.set(src, img);
+                if (callback) callback();
+            };
+            img.src = src;
+            return null; // Not loaded yet
+        }
+
+        function drawWidgetPreview(ctx, widget) {
+            const BUTTON_SIZE = 100;
+            const BUTTON_ICON_SIZE = 64;
+            const BUTTON_BORDER_SIZE = 4;
+            const SLIDER_OFFSET = 100;
+
+            const getIconSrc = (iconName) => {
+                if (!iconName) return null;
+                const localIcon = state.icons.find(ic => ic.name === iconName);
+                if (localIcon) return localIcon.preview;
+                return `https://cdn.jsdelivr.net/npm/@mdi/svg@latest/svg/${iconName}.svg`;
+            };
+
+            const iconOnSrc = getIconSrc(widget.icon_on);
+            const iconOffSrc = getIconSrc(widget.icon_off);
+
+            if (widget.type === 'button') {
+                const centerX = widget.pos_x + BUTTON_SIZE / 2;
+                const centerY = widget.pos_y + BUTTON_SIZE / 2;
+
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = BUTTON_BORDER_SIZE;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, BUTTON_SIZE / 2, 0, Math.PI * 2);
+                ctx.stroke();
+
+                const iconImg = getOrLoadImage(iconOffSrc, renderPreview);
+                if (iconImg) {
+                    const iconPos = (BUTTON_SIZE - BUTTON_ICON_SIZE) / 2;
+                    ctx.drawImage(iconImg, widget.pos_x + iconPos, widget.pos_y + iconPos, BUTTON_ICON_SIZE, BUTTON_ICON_SIZE);
+                }
+
+                ctx.fillStyle = '#000';
+                ctx.font = '26px Montserrat, sans-serif';
+                ctx.fillText(widget.label, widget.pos_x + BUTTON_SIZE + 30, widget.pos_y + BUTTON_SIZE / 2 + 9);
+            } else {
+                // Match firmware positioning: bar at bottom (y + height - 100), label at top
+                const barHeight = BUTTON_SIZE_FIRMWARE; // Fixed 100px like firmware
+                const barY = widget.pos_y + SLIDER_HEIGHT - barHeight; // Bar at bottom of widget
+                const sliderWidth = widget.width - SLIDER_OFFSET - barHeight / 2;
+                const value = 60;
+                const valueX = SLIDER_OFFSET + (value * sliderWidth) / 100;
+
+                ctx.fillStyle = '#000';
+                ctx.fillRect(widget.pos_x, barY, widget.width, barHeight);
+
+                ctx.beginPath();
+                ctx.arc(widget.pos_x + barHeight / 2, barY + barHeight / 2, barHeight / 2, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(widget.pos_x + valueX, barY + BUTTON_BORDER_SIZE, widget.width - valueX - barHeight / 2, barHeight - 2 * BUTTON_BORDER_SIZE);
+
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(widget.pos_x + widget.width - barHeight / 2, barY + barHeight / 2, barHeight / 2 - BUTTON_BORDER_SIZE, 0, Math.PI * 2);
+                ctx.fill();
+
+                if (valueX > 0) {
+                    ctx.fillStyle = '#000';
+                    ctx.beginPath();
+                    ctx.arc(widget.pos_x + valueX, barY + barHeight / 2, barHeight / 2 - 1, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                const iconImg = getOrLoadImage(iconOnSrc, renderPreview);
+                if (iconImg) {
+                    const iconSize = 64;
+                    const iconPos = (barHeight - iconSize) / 2;
+                    ctx.filter = 'invert(1)';
+                    ctx.drawImage(iconImg, widget.pos_x + iconPos, barY + iconPos, iconSize, iconSize);
+                    ctx.filter = 'none';
+                }
+
+                // Label at top of widget (matches firmware: rect_.y + font_height)
+                ctx.fillStyle = '#000';
+                ctx.font = '26px Montserrat, sans-serif';
+                ctx.fillText(widget.label, widget.pos_x, widget.pos_y + 30);
+            }
+        }
+
+        function drawTabsNav(ctx, W, H) {
+            const NAV_BAR_HEIGHT = 60;
+            const TAB_PADDING = 20;
+            
+            ctx.font = '26px Montserrat, sans-serif';
+            ctx.fillStyle = '#000';
+
+            // Calculate total width
+            let totalWidth = 0;
+            const textWidths = [];
+            for (const page of state.pages) {
+                const textWidth = ctx.measureText(page.label).width;
+                textWidths.push(textWidth);
+                totalWidth += textWidth + TAB_PADDING * 2;
+            }
+
+            let x = (W - totalWidth) / 2;
+            const navCenterY = H - NAV_BAR_HEIGHT / 2;
+            const textY = navCenterY + 13 / 2 - 4; // Approximate font height / 2
+
+            for (let i = 0; i < state.pages.length; i++) {
+                const page = state.pages[i];
+                const textWidth = textWidths[i];
+                const tabWidth = textWidth + TAB_PADDING * 2;
+                const textX = x + TAB_PADDING;
+
+                // Underline active tab
+                if (i === state.currentPage) {
+                    const underlineY = textY + 6;
+                    ctx.fillRect(textX - 4, underlineY, textWidth + 8, 3);
+                }
+
+                // Draw text
+                ctx.fillText(page.label, textX, textY);
+                x += tabWidth;
+            }
+        }
+
+        function drawCarouselNav(ctx, W, H) {
+            const NAV_BAR_HEIGHT = 60;
+            const PAGE_DOT_RADIUS = 8;
+            const PAGE_DOT_SPACING = 30;
+            
+            const y = H - NAV_BAR_HEIGHT / 2;
+            const totalWidth = (state.pages.length - 1) * PAGE_DOT_SPACING;
+            let x = W / 2 - totalWidth / 2;
+
+            ctx.fillStyle = '#000';
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+
+            const arrowSize = 12;
+
+            // Left arrow (chevron)
+            if (state.currentPage > 0) {
+                const arrowX = 40;
+                ctx.beginPath();
+                ctx.moveTo(arrowX + arrowSize, y - arrowSize);
+                ctx.lineTo(arrowX, y);
+                ctx.lineTo(arrowX + arrowSize, y + arrowSize);
+                ctx.stroke();
+                // Thicken
+                ctx.beginPath();
+                ctx.moveTo(arrowX + arrowSize, y - arrowSize + 1);
+                ctx.lineTo(arrowX + 1, y);
+                ctx.lineTo(arrowX + arrowSize, y + arrowSize - 1);
+                ctx.stroke();
+            }
+
+            // Right arrow (chevron)
+            if (state.currentPage < state.pages.length - 1) {
+                const arrowX = W - 40;
+                ctx.beginPath();
+                ctx.moveTo(arrowX - arrowSize, y - arrowSize);
+                ctx.lineTo(arrowX, y);
+                ctx.lineTo(arrowX - arrowSize, y + arrowSize);
+                ctx.stroke();
+                // Thicken
+                ctx.beginPath();
+                ctx.moveTo(arrowX - arrowSize, y - arrowSize + 1);
+                ctx.lineTo(arrowX - 1, y);
+                ctx.lineTo(arrowX - arrowSize, y + arrowSize - 1);
+                ctx.stroke();
+            }
+
+            // Draw dots
+            for (let i = 0; i < state.pages.length; i++) {
+                ctx.beginPath();
+                ctx.arc(x, y, PAGE_DOT_RADIUS, 0, Math.PI * 2);
+                if (i === state.currentPage) {
+                    ctx.fill();
+                } else {
+                    ctx.stroke();
+                    // Inner white circle
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath();
+                    ctx.arc(x, y, PAGE_DOT_RADIUS - 2, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#000';
+                }
+                x += PAGE_DOT_SPACING;
+            }
+        }
+
+        // Re-render preview when nav mode changes
+        document.getElementById('nav-mode').addEventListener('change', render);
+
+        // ============================================================
+        // Export
+        // ============================================================
+        async function exportConfig() {
+            try {
+                // First, collect all used icons
+                const usedIcons = new Set();
+                for (const page of state.pages) {
+                    for (const widget of page.widgets) {
+                        if (widget.icon_on) usedIcons.add(widget.icon_on);
+                        if (widget.icon_off) usedIcons.add(widget.icon_off);
+                    }
+                }
+
+                // Add required system icons
+                const systemIcons = [
+                    'alert-circle',
+                    'home-assistant',
+                    'lock-alert-outline',
+                    'server-network-off',
+                    'wifi-off'
+                ];
+                systemIcons.forEach(icon => usedIcons.add(icon));
+
+            // Generate icons.h if there are MDI icons
+            const mdiIcons = Array.from(usedIcons).filter(name => 
+                !state.icons.find(ic => ic.name === name)
+            );
+
+            if (mdiIcons.length > 0) {
+                const statusEl = document.getElementById('icons-status');
+                if (statusEl) {
+                    statusEl.innerHTML = `<div class="status">Generating ${mdiIcons.length} icons...</div>`;
+                }
+
+                try {
+                    await generateIconsH(mdiIcons);
+                    if (statusEl) {
+                        statusEl.innerHTML = `<div class="status success">Generated icons.h with ${mdiIcons.length} icons!</div>`;
+                    }
+                } catch (err) {
+                    console.error('Failed to generate icons:', err);
+                    alert('Failed to generate icons.h. Check console for details.');
+                }
+            }
+
+            // Now generate config
+            const ssid = document.getElementById('wifi-ssid').value || 'YOUR_SSID';
+            const password = document.getElementById('wifi-password').value || 'YOUR_PASSWORD';
+            const haProtocol = document.getElementById('ha-protocol').value;
+            const haHost = document.getElementById('ha-host').value || 'YOUR_HA_IP:8123';
+            const haUrl = `${haProtocol}${haHost}/api/websocket`;
+            const haToken = document.getElementById('ha-token').value || 'YOUR_TOKEN';
+            const navMode = document.getElementById('nav-mode').value;
+
+            // Collect all unique entities
+            const entities = [];
+            const entityVars = {};
+
+            for (const page of state.pages) {
+                for (const widget of page.widgets) {
+                    if (widget.entity_id && !entityVars[widget.entity_id]) {
+                        const varName = widget.entity_id.replace(/\./g, '_');
+                        entityVars[widget.entity_id] = varName;
+                        entities.push({
+                            varName,
+                            entity_id: widget.entity_id,
+                            command_type: widget.command_type
+                        });
+                    }
+                }
+            }
+
+            let code = `#include "config_remote.h"
+#include "assets/icons.h"
+#include "boards.h"
+#include "config.h"
+#include "screen.h"
+#include "store.h"
+
+void configure_remote(Configuration* config, EntityStore* store, ScreenManager* screens) {
+    // =========================================================================
+    // WiFi Configuration
+    // =========================================================================
+    config->wifi_ssid = "${ssid}";
+    config->wifi_password = "${password}";
+
+    // =========================================================================
+    // Home Assistant Configuration
+    // =========================================================================
+    config->home_assistant_url = "${haUrl}";
+    config->home_assistant_token = "${haToken}";
+    config->root_ca = ISRG_ROOT_X1;
+
+    // =========================================================================
+    // Navigation Mode${navMode === 'tabs' ? ': Tabs' : ': Carousel'}
+    // =========================================================================
+${navMode === 'tabs' ? '    screen_manager_set_nav_mode(screens, NavigationMode::Tabs);' : '    // Using default carousel navigation'}
+
+    // =========================================================================
+    // Entity Declarations
+    // =========================================================================
+`;
+
+            for (const entity of entities) {
+                code += `
+    EntityConfig ${entity.varName} = {
+        .entity_id = "${entity.entity_id}",
+        .command_type = CommandType::${entity.command_type},
+    };
+`;
+            }
+
+            // Generate pages
+            for (let i = 0; i < state.pages.length; i++) {
+                const page = state.pages[i];
+                const pageVar = `page_${i + 1}`;
+
+                code += `
+    // =========================================================================
+    // PAGE ${i + 1}: ${page.label}
+    // =========================================================================
+    Screen* ${pageVar} = screen_manager_add_page(screens, "${page.label}");
+`;
+
+                for (const widget of page.widgets) {
+                    if (!widget.entity_id) continue;
+                    const entityVar = entityVars[widget.entity_id];
+                    const iconOn = (widget.icon_on || 'lightbulb_outline').replace(/-/g, '_');
+                    const iconOff = (widget.icon_off || 'lightbulb_off_outline').replace(/-/g, '_');
+
+                    if (widget.type === 'button') {
+                        code += `
+    screen_add_button(
+        ButtonConfig{
+            .entity_ref = store_add_entity(store, ${entityVar}),
+            .label = "${widget.label}",
+            .icon_on = ${iconOn},
+            .icon_off = ${iconOff},
+            .pos_x = ${widget.pos_x},
+            .pos_y = ${widget.pos_y},
+        },
+        ${pageVar});
+`;
+                    } else {
+                        code += `
+    screen_add_slider(
+        SliderConfig{
+            .entity_ref = store_add_entity(store, ${entityVar}),
+            .label = "${widget.label}",
+            .icon_on = ${iconOn},
+            .icon_off = ${iconOff},
+            .pos_x = ${widget.pos_x},
+            .pos_y = ${widget.pos_y},
+            .width = ${widget.width},
+            .height = ${SLIDER_HEIGHT},
+        },
+        ${pageVar});
+`;
+                    }
+                }
+            }
+
+            code += `}
+`;
+
+            currentExport = { filename: 'config_remote.cpp', content: code };
+
+            // Try to write directly to project folder
+            if (projectDirHandle || window.showDirectoryPicker) {
+                const statusEl = document.getElementById('icons-status');
+                if (statusEl) statusEl.innerHTML = '<div class="status">Writing files to project...</div>';
+
+                const configWritten = await writeFileToProject('src/config_remote.cpp', code);
+
+                if (configWritten && statusEl) {
+                    statusEl.innerHTML = '<div class="status success">Exported to src/config_remote.cpp and src/assets/icons.h</div>';
+                }
+            } else {
+                // Fallback to download
+                showModal('config_remote.cpp', code);
+            }
+            } catch (err) {
+                console.error('Export error:', err);
+                alert('Export failed: ' + err.message);
+            }
+        }
+
+        function showModal(title, code) {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-code').textContent = code;
+            document.getElementById('export-modal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('export-modal').classList.remove('active');
+        }
+
+        function copyToClipboard() {
+            navigator.clipboard.writeText(currentExport.content);
+        }
+
+        function downloadFile() {
+            const blob = new Blob([currentExport.content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = currentExport.filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        async function selectProjectFolder() {
+            try {
+                projectDirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+                await saveDirectoryHandle(projectDirHandle);
+                updateFolderStatus();
+                return true;
+            } catch (err) {
+                // User cancelled or permission denied
+                return false;
+            }
+        }
+
+        function updateFolderStatus() {
+            const el = document.getElementById('project-folder-status');
+            if (projectDirHandle) {
+                el.textContent = `Project: ${projectDirHandle.name} (click to change)`;
+            } else {
+                el.textContent = 'No project folder (click to select)';
+            }
+        }
+
+        function showWelcomeModal() {
+            document.getElementById('welcome-modal').classList.add('active');
+        }
+
+        function hideWelcomeModal() {
+            document.getElementById('welcome-modal').classList.remove('active');
+        }
+
+        function showImportModal() {
+            document.getElementById('import-modal').classList.add('active');
+        }
+
+        function hideImportModal() {
+            document.getElementById('import-modal').classList.remove('active');
+        }
+
+        async function handleSelectProjectFolder() {
+            hideWelcomeModal();
+            const selected = await selectProjectFolder();
+            if (selected) {
+                // Check if config exists
+                const configExists = await checkConfigExists();
+                if (configExists) {
+                    showImportModal();
+                }
+            }
+        }
+
+        function handleStartFresh() {
+            hideWelcomeModal();
+            // Already have a blank page from init
+        }
+
+        async function handleImportExisting() {
+            hideImportModal();
+            await importConfigFromProject();
+        }
+
+        function handleStartNew() {
+            hideImportModal();
+            // Keep current blank state
+        }
+
+        async function checkConfigExists() {
+            if (!projectDirHandle) return false;
+            try {
+                const srcDir = await projectDirHandle.getDirectoryHandle('src');
+                await srcDir.getFileHandle('config_remote.cpp');
+                return true;
+            } catch {
+                return false;
+            }
+        }
+
+        async function importConfigFromProject() {
+            if (!projectDirHandle) return;
+            try {
+                const srcDir = await projectDirHandle.getDirectoryHandle('src');
+                const fileHandle = await srcDir.getFileHandle('config_remote.cpp');
+                const file = await fileHandle.getFile();
+                const content = await file.text();
+                parseConfigFile(content);
+                state.currentPage = 0;
+                render();
+                const statusEl = document.getElementById('icons-status');
+                if (statusEl) statusEl.innerHTML = '<div class="status success">Imported configuration from project</div>';
+            } catch (err) {
+                alert('Failed to import configuration: ' + err.message);
+            }
+        }
+
+        async function writeFileToProject(path, content) {
+            if (!projectDirHandle) {
+                if (!await selectProjectFolder()) return false;
+            }
+
+            try {
+                // Navigate to subdirectory
+                const parts = path.split('/');
+                const filename = parts.pop();
+                let dirHandle = projectDirHandle;
+
+                for (const part of parts) {
+                    dirHandle = await dirHandle.getDirectoryHandle(part, { create: true });
+                }
+
+                // Backup existing file if it exists
+                try {
+                    const existingFile = await dirHandle.getFileHandle(filename);
+                    const existingContent = await (await existingFile.getFile()).text();
+
+                    // Write backup
+                    const backupName = filename + '.backup';
+                    const backupHandle = await dirHandle.getFileHandle(backupName, { create: true });
+                    const backupWritable = await backupHandle.createWritable();
+                    await backupWritable.write(existingContent);
+                    await backupWritable.close();
+                } catch (err) {
+                    // File doesn't exist, no backup needed
+                }
+
+                // Write new file
+                const fileHandle = await dirHandle.getFileHandle(filename, { create: true });
+                const writable = await fileHandle.createWritable();
+                await writable.write(content);
+                await writable.close();
+
+                return true;
+            } catch (err) {
+                return false;
+            }
+        }
+
+        // ============================================================
+        // Project Save/Load
+        // ============================================================
+        function importConfig() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.cpp';
+            input.onchange = e => {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = e => {
+                    try {
+                        const content = e.target.result;
+                        parseConfigFile(content);
+                        state.currentPage = 0;
+                        render();
+                        alert('Configuration imported successfully!');
+                    } catch (err) {
+                        alert('Failed to import configuration: ' + err.message);
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        }
+
+        function parseConfigFile(content) {
+            // Parse WiFi
+            const ssidMatch = content.match(/config->wifi_ssid\s*=\s*"([^"]*)"/);
+            const passwordMatch = content.match(/config->wifi_password\s*=\s*"([^"]*)"/);
+            if (ssidMatch) document.getElementById('wifi-ssid').value = ssidMatch[1];
+            if (passwordMatch) document.getElementById('wifi-password').value = passwordMatch[1];
+
+            // Parse Home Assistant
+            const urlMatch = content.match(/config->home_assistant_url\s*=\s*"([^"]*)"/);
+            const tokenMatch = content.match(/config->home_assistant_token\s*=\s*"([^"]*)"/);
+            if (urlMatch) {
+                const fullUrl = urlMatch[1];
+                // Parse protocol (ws:// or wss://)
+                const protocolMatch = fullUrl.match(/^(wss?:\/\/)/);
+                if (protocolMatch) {
+                    document.getElementById('ha-protocol').value = protocolMatch[1];
+                    // Extract host:port (everything between protocol and /api/websocket)
+                    const hostMatch = fullUrl.match(/^wss?:\/\/([^/]+)/);
+                    if (hostMatch) {
+                        document.getElementById('ha-host').value = hostMatch[1];
+                    }
+                }
+            }
+            if (tokenMatch) document.getElementById('ha-token').value = tokenMatch[1];
+
+            // Parse navigation mode
+            if (content.includes('NavigationMode::Tabs')) {
+                document.getElementById('nav-mode').value = 'tabs';
+            } else {
+                document.getElementById('nav-mode').value = 'carousel';
+            }
+
+            // Parse entities - handle multiline
+            const entityRegex = /EntityConfig\s+(\w+)\s*=\s*\{[\s\S]*?\.entity_id\s*=\s*"([^"]*)"[\s\S]*?\.command_type\s*=\s*CommandType::(\w+)/g;
+            const entities = {};
+            let match;
+            while ((match = entityRegex.exec(content)) !== null) {
+                entities[match[1]] = { entity_id: match[2], command_type: match[3] };
+            }
+
+            // Parse pages
+            const pages = [];
+            const pageRegex = /Screen\*\s+(\w+)\s*=\s*screen_manager_add_page\(screens,\s*"([^"]*)"\);/g;
+            const pageVars = [];
+            while ((match = pageRegex.exec(content)) !== null) {
+                pageVars.push(match[1]);
+                pages.push({ label: match[2], widgets: [] });
+            }
+
+            // Parse buttons - handle multiline
+            const buttonRegex = /screen_add_button\(\s*ButtonConfig\{([\s\S]*?)\},\s*(\w+)\);/g;
+            while ((match = buttonRegex.exec(content)) !== null) {
+                const configBlock = match[1];
+                const pageVar = match[2];
+                const pageIdx = pageVars.indexOf(pageVar);
+                
+                const entityMatch = configBlock.match(/\.entity_ref\s*=\s*store_add_entity\(store,\s*(\w+)\)/);
+                const labelMatch = configBlock.match(/\.label\s*=\s*"([^"]*)"/);
+                const iconOnMatch = configBlock.match(/\.icon_on\s*=\s*(\w+)/);
+                const iconOffMatch = configBlock.match(/\.icon_off\s*=\s*(\w+)/);
+                const posXMatch = configBlock.match(/\.pos_x\s*=\s*(\d+)/);
+                const posYMatch = configBlock.match(/\.pos_y\s*=\s*(\d+)/);
+                
+                if (pageIdx >= 0 && entityMatch && entities[entityMatch[1]]) {
+                    const entity = entities[entityMatch[1]];
+                    pages[pageIdx].widgets.push({
+                        type: 'button',
+                        entity_id: entity.entity_id,
+                        command_type: entity.command_type,
+                        label: labelMatch ? labelMatch[1] : 'Button',
+                        icon_on: iconOnMatch ? iconOnMatch[1].replace(/_/g, '-') : 'lightbulb-outline',
+                        icon_off: iconOffMatch ? iconOffMatch[1].replace(/_/g, '-') : 'lightbulb-off-outline',
+                        pos_x: posXMatch ? parseInt(posXMatch[1]) : 30,
+                        pos_y: posYMatch ? parseInt(posYMatch[1]) : 30,
+                        width: 100,
+                        height: 100
+                    });
+                }
+            }
+
+            // Parse sliders - handle multiline
+            const sliderRegex = /screen_add_slider\(\s*SliderConfig\{([\s\S]*?)\},\s*(\w+)\);/g;
+            while ((match = sliderRegex.exec(content)) !== null) {
+                const configBlock = match[1];
+                const pageVar = match[2];
+                const pageIdx = pageVars.indexOf(pageVar);
+                
+                const entityMatch = configBlock.match(/\.entity_ref\s*=\s*store_add_entity\(store,\s*(\w+)\)/);
+                const labelMatch = configBlock.match(/\.label\s*=\s*"([^"]*)"/);
+                const iconOnMatch = configBlock.match(/\.icon_on\s*=\s*(\w+)/);
+                const iconOffMatch = configBlock.match(/\.icon_off\s*=\s*(\w+)/);
+                const posXMatch = configBlock.match(/\.pos_x\s*=\s*(\d+)/);
+                const posYMatch = configBlock.match(/\.pos_y\s*=\s*(\d+)/);
+                const widthMatch = configBlock.match(/\.width\s*=\s*(\d+|DISPLAY_WIDTH\s*-\s*\d+)/);
+                const heightMatch = configBlock.match(/\.height\s*=\s*(\d+)/);
+                
+                if (pageIdx >= 0 && entityMatch && entities[entityMatch[1]]) {
+                    const entity = entities[entityMatch[1]];
+                    let width = 480;
+                    if (widthMatch) {
+                        const widthStr = widthMatch[1];
+                        if (widthStr.includes('DISPLAY_WIDTH')) {
+                            const subtractMatch = widthStr.match(/DISPLAY_WIDTH\s*-\s*(\d+)/);
+                            width = subtractMatch ? 540 - parseInt(subtractMatch[1]) : 480;
+                        } else {
+                            width = parseInt(widthStr);
+                        }
+                    }
+                    
+                    pages[pageIdx].widgets.push({
+                        type: 'slider',
+                        entity_id: entity.entity_id,
+                        command_type: entity.command_type,
+                        label: labelMatch ? labelMatch[1] : 'Slider',
+                        icon_on: iconOnMatch ? iconOnMatch[1].replace(/_/g, '-') : 'lightbulb-outline',
+                        icon_off: iconOffMatch ? iconOffMatch[1].replace(/_/g, '-') : 'lightbulb-off-outline',
+                        pos_x: posXMatch ? parseInt(posXMatch[1]) : 30,
+                        pos_y: posYMatch ? parseInt(posYMatch[1]) : 30,
+                        width: width
+                    });
+                }
+            }
+
+            if (pages.length > 0) {
+                state.pages = pages;
+                state.currentPage = 0;
+            }
+        }
+
+        function saveProject() {
+            const project = {
+                wifi_ssid: document.getElementById('wifi-ssid').value,
+                wifi_password: document.getElementById('wifi-password').value,
+                ha_protocol: document.getElementById('ha-protocol').value,
+                ha_host: document.getElementById('ha-host').value,
+                ha_token: document.getElementById('ha-token').value,
+                nav_mode: document.getElementById('nav-mode').value,
+                pages: state.pages
+            };
+
+            const json = JSON.stringify(project, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'epaper-remote-project.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function loadProject() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = e => {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = e => {
+                    try {
+                        const project = JSON.parse(e.target.result);
+                        document.getElementById('wifi-ssid').value = project.wifi_ssid || '';
+                        document.getElementById('wifi-password').value = project.wifi_password || '';
+                        // Handle new split fields or legacy ha_url
+                        if (project.ha_protocol && project.ha_host) {
+                            document.getElementById('ha-protocol').value = project.ha_protocol;
+                            document.getElementById('ha-host').value = project.ha_host;
+                        } else if (project.ha_url) {
+                            // Legacy: parse old ha_url format
+                            const protocolMatch = project.ha_url.match(/^(wss?:\/\/)/);
+                            if (protocolMatch) {
+                                document.getElementById('ha-protocol').value = protocolMatch[1];
+                                const hostMatch = project.ha_url.match(/^wss?:\/\/([^/]+)/);
+                                if (hostMatch) document.getElementById('ha-host').value = hostMatch[1];
+                            }
+                        }
+                        document.getElementById('ha-token').value = project.ha_token || '';
+                        document.getElementById('nav-mode').value = project.nav_mode || 'tabs';
+                        state.pages = project.pages || [];
+                        state.currentPage = 0;
+                        render();
+                    } catch (err) {
+                        alert('Failed to load project: ' + err.message);
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        }
+    </script>
+</body>
+</html>
