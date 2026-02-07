@@ -13,6 +13,7 @@ enum class CommandType : uint8_t {
     SetFanSpeedPercentage,
     SwitchOnOff,
     AutomationOnOff,
+    SetCoverPosition,
 };
 
 struct HomeAssistantEntity {

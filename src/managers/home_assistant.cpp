@@ -117,6 +117,12 @@ void hass_parse_entity_update(home_assistant_context_t* hass, uint8_t widget_idx
         if (cJSON_IsNumber(off_brightness)) {
             hass->entity_values[widget_idx] = off_brightness->valueint * 100 / 254;
         }
+
+        // Extract cover position (0-100)
+        cJSON* current_position = cJSON_GetObjectItem(attributes, "current_position");
+        if (cJSON_IsNumber(current_position)) {
+            hass->entity_values[widget_idx] = current_position->valueint;
+        }
     }
 
     // Update the full state
@@ -324,6 +330,13 @@ void hass_send_command(home_assistant_context_t* hass, Command* cmd) {
         }
         cJSON_AddItemToObject(root, "service_data", service_data = cJSON_CreateObject());
         cJSON_AddStringToObject(service_data, "entity_id", cmd->entity_id);
+        break;
+    case CommandType::SetCoverPosition:
+        cJSON_AddStringToObject(root, "domain", "cover");
+        cJSON_AddStringToObject(root, "service", "set_cover_position");
+        cJSON_AddItemToObject(root, "service_data", service_data = cJSON_CreateObject());
+        cJSON_AddStringToObject(service_data, "entity_id", cmd->entity_id);
+        cJSON_AddNumberToObject(service_data, "position", cmd->value);
         break;
     default:
         ESP_LOGI(TAG, "Service type not supported");
