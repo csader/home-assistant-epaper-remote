@@ -85,8 +85,15 @@ void ui_draw_carousel_nav(FASTEPD* epaper, uint8_t current_page, uint8_t page_co
 }
 
 void ui_draw_tabs_nav(FASTEPD* epaper, ScreenManager* screens, uint8_t current_page, BitDepth depth) {
+    uint8_t fill_color = (depth == BitDepth::BD_4BPP) ? 0xf : BBEP_WHITE;
+
     epaper->setFont(Montserrat_Regular_26);
     epaper->setTextColor(BBEP_BLACK);
+
+    // Get consistent font height using reference string (same pattern as widgets)
+    BB_RECT font_rect;
+    epaper->getStringBox("pI", &font_rect);
+    uint16_t font_height = font_rect.h;
 
     // Calculate tab widths and total width
     BB_RECT text_rects[MAX_PAGES];
@@ -99,30 +106,26 @@ void ui_draw_tabs_nav(FASTEPD* epaper, ScreenManager* screens, uint8_t current_p
 
     // Calculate starting x position to center all tabs
     uint16_t x = (DISPLAY_WIDTH - total_width) / 2;
-    uint16_t y = DISPLAY_HEIGHT - NAV_BAR_HEIGHT / 2;
+    uint16_t nav_center_y = DISPLAY_HEIGHT - NAV_BAR_HEIGHT / 2;
+
+    // Consistent text baseline for all tabs
+    uint16_t text_y = nav_center_y + font_height / 2 - 4;
 
     // Draw each tab
     for (uint8_t i = 0; i < screens->page_count; i++) {
         const char* label = screens->pages[i].label ? screens->pages[i].label : "Page";
         uint16_t tab_width = text_rects[i].w + TAB_PADDING * 2;
         uint16_t text_x = x + TAB_PADDING;
-        uint16_t text_y = y + text_rects[i].h / 2;
 
-        // Draw tab label
+        // Active tab: draw simple underline
+        if (i == current_page) {
+            uint16_t underline_y = text_y + 6;
+            epaper->fillRect(text_x - 4, underline_y, text_rects[i].w + 8, 3, BBEP_BLACK);
+        }
+
+        // Draw text (same position for all tabs)
         epaper->setCursor(text_x, text_y);
         epaper->write(label);
-
-        // Active tab: bold (draw twice offset) + underline
-        if (i == current_page) {
-            // Bold effect: draw text again slightly offset
-            epaper->setCursor(text_x + 1, text_y);
-            epaper->write(label);
-
-            // Underline
-            uint16_t underline_y = y + text_rects[i].h / 2 + 8;
-            epaper->fillRect(x + TAB_PADDING / 2, underline_y,
-                           text_rects[i].w + TAB_PADDING, TAB_UNDERLINE_THICKNESS, BBEP_BLACK);
-        }
 
         x += tab_width;
     }
