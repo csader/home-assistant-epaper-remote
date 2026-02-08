@@ -16,7 +16,19 @@ As it stays permanently connected to the Wifi to get updates, the remote only la
 
 You will need to install [PlatformIO](https://platformio.org/) to compile the project.
 
-### Generate icons
+### Option 1: Visual Configurator (Recommended)
+
+Open `tools/configurator.html` in a web browser for a visual configuration tool that:
+- Lets you configure pages, widgets, and entity bindings with a live preview
+- Fetches icons directly from Material Design Icons CDN (no manual downloads)
+- Auto-generates `icons.h` with only the icons you use
+- Exports directly to your project folder via File System Access API
+- Creates backups before overwriting existing files
+- Can import existing `config_remote.cpp` configurations
+
+### Option 2: Manual Configuration
+
+#### Generate icons
 
 Find the icons for your buttons at [Pictogrammers](https://pictogrammers.com/library/mdi/).
 Use "Download PNG (256x256)" and place your icons in the `icons-buttons` folder.
@@ -25,7 +37,7 @@ Make sure you have an icon for the "on" state and one for the "off" state of eac
 Then run the python script `generate-icons.py` to generate the file `src/assets/icons.h`.
 You will need to install the library [Pillow](https://pillow.readthedocs.io/en/stable/installation/basic-installation.html#basic-installation) to run this script.
 
-### Get a home assistant token
+#### Get a home assistant token
 
 In Home Assistant:
 
@@ -34,7 +46,7 @@ In Home Assistant:
 - Click on "Create Token" in the "Long-lived access tokens" section
 - Note the token generated
 
-### Update configuration
+#### Update configuration
 
 Choose an example configuration and copy it to `src/config_remote.cpp`:
 
@@ -65,6 +77,47 @@ Widgets organized across multiple pages with labeled tabs at the bottom. Tap a t
 ---
 
 Then edit `src/config_remote.cpp` with your WiFi credentials, Home Assistant URL, token, and entity IDs.
+
+## Widget Types
+
+### Buttons
+Tap to toggle between on/off states. Shows different icons for on and off states.
+
+### Sliders
+Drag along the slider to adjust values (0-100%). Tap the icon on the left to quickly toggle between off (0) and on (100).
+
+## Supported Entity Types
+
+### Lights
+- **SetLightBrightnessPercentage**: Control light brightness with a slider (0-100%)
+- **SwitchOnOff**: Simple on/off toggle for lights or switches
+
+### Covers
+- **SetCoverPosition**: Control blinds/shades position with a slider (0-100%)
+
+### Fans
+- **SetFanSpeedPercentage**: Control fan speed with a slider (0-100%)
+
+### Scenes & Scripts
+- **ActivateScene**: One-tap button to activate a scene (no state feedback)
+- **RunScript**: One-tap button to run an automation script (no state feedback)
+
+### Locks
+- **LockUnlock**: Lock/unlock doors with state feedback (button shows locked/unlocked state)
+
+### Media Players
+- **SetMediaPlayerVolume**: Control volume with a slider (0-100%)
+- **MediaPlayerPlayPause**: Toggle play/pause state with a button
+
+### Automations
+- **AutomationOnOff**: Enable/disable automations with a button
+
+### Input Helpers
+- **SetInputNumber**: Control input_number helpers with a slider
+- **InputBooleanToggle**: Toggle input_boolean helpers with a button
+
+### Vacuum
+- **VacuumCommand**: Control vacuum (0=stop, 1=start, 2+=dock)
 
 ### Build and upload
 

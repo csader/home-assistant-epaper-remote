@@ -199,6 +199,18 @@ bool Slider::isTouching(const TouchEvent* touch_event) const {
 
 uint8_t Slider::getValueFromTouch(const TouchEvent* touch_event, uint8_t original_value) const {
     const int touch_x = static_cast<int>(touch_event->x);
+    const int touch_y = static_cast<int>(touch_event->y);
+
+    // Check if tapping the icon (left button area)
+    const int icon_left = static_cast<int>(rect_.x);
+    const int icon_right = icon_left + BUTTON_SIZE;
+    const int icon_top = static_cast<int>(rect_.y) + static_cast<int>(rect_.h) - BUTTON_SIZE;
+    const int icon_bottom = icon_top + BUTTON_SIZE;
+
+    if (touch_x >= icon_left && touch_x < icon_right && touch_y >= icon_top && touch_y < icon_bottom) {
+        // Toggle: if off (0), turn on to 100; if on (>0), turn off to 0
+        return original_value > 0 ? 0 : 100;
+    }
 
     // Slider geometry
     const int slider_start = static_cast<int>(rect_.x) + SLIDER_OFFSET;

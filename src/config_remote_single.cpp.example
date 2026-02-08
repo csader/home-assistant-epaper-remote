@@ -30,17 +30,33 @@ void configure_remote(Configuration* config, EntityStore* store, ScreenManager* 
         .entity_id = "light.living_room",
         .command_type = CommandType::SetLightBrightnessPercentage,
     };
-    EntityConfig bedroom_lights = {
-        .entity_id = "light.bedroom",
-        .command_type = CommandType::SetLightBrightnessPercentage,
+    EntityConfig bedroom_shades = {
+        .entity_id = "cover.bedroom_shades",
+        .command_type = CommandType::SetCoverPosition,
     };
-    EntityConfig air_purifier = {
-        .entity_id = "fan.air_purifier",
+    EntityConfig ceiling_fan = {
+        .entity_id = "fan.ceiling_fan",
         .command_type = CommandType::SetFanSpeedPercentage,
     };
-    EntityConfig pc_lights = {
-        .entity_id = "switch.pc_lights",
-        .command_type = CommandType::SwitchOnOff,
+    EntityConfig movie_scene = {
+        .entity_id = "scene.movie_time",
+        .command_type = CommandType::ActivateScene,
+    };
+    EntityConfig morning_routine = {
+        .entity_id = "script.morning_routine",
+        .command_type = CommandType::RunScript,
+    };
+    EntityConfig front_door = {
+        .entity_id = "lock.front_door",
+        .command_type = CommandType::LockUnlock,
+    };
+    EntityConfig speaker_volume = {
+        .entity_id = "media_player.living_room_speaker",
+        .command_type = CommandType::SetMediaPlayerVolume,
+    };
+    EntityConfig tv_play_pause = {
+        .entity_id = "media_player.living_room_tv",
+        .command_type = CommandType::MediaPlayerPlayPause,
     };
     EntityConfig night_mode = {
         .entity_id = "automation.night_mode",
@@ -52,67 +68,112 @@ void configure_remote(Configuration* config, EntityStore* store, ScreenManager* 
     // =========================================================================
     Screen* page = screen_manager_add_page(screens);
 
-    // Slider: Brightness control (0-100%)
-    // Height includes label text above the slider track
+    // Sliders
     screen_add_slider(
         SliderConfig{
             .entity_ref = store_add_entity(store, living_room_lights),
-            .label = "Living room",
+            .label = "Living Room",
             .icon_on = lightbulb_outline,
             .icon_off = lightbulb_off_outline,
             .pos_x = 30,
             .pos_y = 30,
-            .width = DISPLAY_WIDTH - 60,
+            .width = 220,
             .height = 170,
         },
         page);
 
     screen_add_slider(
         SliderConfig{
-            .entity_ref = store_add_entity(store, bedroom_lights),
-            .label = "Bedroom",
-            .icon_on = lightbulb_outline,
-            .icon_off = lightbulb_off_outline,
-            .pos_x = 30,
-            .pos_y = 240,
-            .width = DISPLAY_WIDTH - 60,
+            .entity_ref = store_add_entity(store, bedroom_shades),
+            .label = "Shades",
+            .icon_on = blinds_open,
+            .icon_off = blinds,
+            .pos_x = 270,
+            .pos_y = 30,
+            .width = 220,
             .height = 170,
         },
         page);
 
     screen_add_slider(
         SliderConfig{
-            .entity_ref = store_add_entity(store, air_purifier),
-            .label = "Air purifier",
+            .entity_ref = store_add_entity(store, ceiling_fan),
+            .label = "Fan",
             .icon_on = fan,
             .icon_off = fan_off,
-            .pos_x = 30,
-            .pos_y = 450,
-            .width = DISPLAY_WIDTH - 60,
+            .pos_x = 270,
+            .pos_y = 220,
+            .width = 220,
             .height = 170,
         },
         page);
 
-    // Button: On/Off toggle (100x100 pixels)
+    screen_add_slider(
+        SliderConfig{
+            .entity_ref = store_add_entity(store, speaker_volume),
+            .label = "Volume",
+            .icon_on = volume_high,
+            .icon_off = volume_low,
+            .pos_x = 30,
+            .pos_y = 410,
+            .width = 220,
+            .height = 170,
+        },
+        page);
+
+    // Buttons
     screen_add_button(
         ButtonConfig{
-            .entity_ref = store_add_entity(store, pc_lights),
-            .label = "PC",
-            .icon_on = lightbulb_outline,
-            .icon_off = lightbulb_off_outline,
+            .entity_ref = store_add_entity(store, movie_scene),
+            .label = "Movie",
+            .icon_on = movie,
+            .icon_off = movie,
             .pos_x = 30,
-            .pos_y = 660,
+            .pos_y = 600,
+        },
+        page);
+
+    screen_add_button(
+        ButtonConfig{
+            .entity_ref = store_add_entity(store, morning_routine),
+            .label = "Morning",
+            .icon_on = weather_sunny,
+            .icon_off = weather_sunny,
+            .pos_x = 150,
+            .pos_y = 600,
+        },
+        page);
+
+    screen_add_button(
+        ButtonConfig{
+            .entity_ref = store_add_entity(store, front_door),
+            .label = "Door",
+            .icon_on = lock,
+            .icon_off = lock_open,
+            .pos_x = 270,
+            .pos_y = 600,
+        },
+        page);
+
+    screen_add_button(
+        ButtonConfig{
+            .entity_ref = store_add_entity(store, tv_play_pause),
+            .label = "TV",
+            .icon_on = play,
+            .icon_off = pause,
+            .pos_x = 390,
+            .pos_y = 600,
         },
         page);
 
     screen_add_button(
         ButtonConfig{
             .entity_ref = store_add_entity(store, night_mode),
-            .label = "Night mode",
-            .icon_on = robot_outline,
-            .icon_off = robot_off_outline,
+            .label = "Night",
+            .icon_on = weather_night,
+            .icon_off = weather_night,
             .pos_x = 30,
-            .pos_y = 800,
+            .pos_y = 720,
         },
         page);
 }

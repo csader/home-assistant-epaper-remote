@@ -14,6 +14,14 @@ enum class CommandType : uint8_t {
     SwitchOnOff,
     AutomationOnOff,
     SetCoverPosition,
+    ActivateScene,
+    RunScript,
+    LockUnlock,
+    SetMediaPlayerVolume,
+    MediaPlayerPlayPause,
+    SetInputNumber,
+    InputBooleanToggle,
+    VacuumCommand,
 };
 
 struct HomeAssistantEntity {

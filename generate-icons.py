@@ -8,6 +8,17 @@ from io import BytesIO, TextIOWrapper
 
 WIDGET_ICON_SIZE = (64, 64)
 UI_ICON_SIZE = (256, 256)
+
+# Reserved C/C++ keywords and common system function names that would cause conflicts
+RESERVED_NAMES = {
+    'auto', 'break', 'case', 'char', 'const', 'continue', 'default', 'do',
+    'double', 'else', 'enum', 'extern', 'float', 'for', 'goto', 'if',
+    'int', 'long', 'register', 'return', 'short', 'signed', 'sizeof', 'static',
+    'struct', 'switch', 'typedef', 'union', 'unsigned', 'void', 'volatile', 'while',
+    'class', 'namespace', 'template', 'typename', 'virtual', 'private', 'public', 'protected',
+    'pause', 'sleep', 'exit', 'abort', 'signal', 'raise', 'time', 'clock',
+}
+
 HEADER = """// AUTO-GENERATED FILE — DO NOT EDIT
 #pragma once
 #include <pgmspace.h>
@@ -53,6 +64,12 @@ def process_image(path: Path, size: tuple[int, int]) -> tuple[bytes, str]:
 def handle_file(file_path: str, out: TextIOWrapper, size: tuple[int, int], manifest: list) -> None:
     path = Path(file_path)
     name = path.stem.replace("-", "_").replace(" ", "_")
+    
+    # Avoid reserved names by prefixing with 'icon_'
+    if name in RESERVED_NAMES:
+        name = f"icon_{name}"
+        print(f"Warning: '{path.stem}' is a reserved name, renamed to '{name}'")
+    
     bmp_data, preview_data_url = process_image(path, size)
 
     print(f"Processing {path} → {name}")

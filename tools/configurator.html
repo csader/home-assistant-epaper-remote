@@ -237,7 +237,7 @@
             padding: 15px 0;
             border-top: 1px solid var(--border);
             margin-top: 20px;
-            z-index: 10;
+            z-index: 50;
             margin-left: -20px;
             margin-right: -20px;
             padding-left: 20px;
@@ -725,6 +725,26 @@
             return `const uint8_t ${name}[] PROGMEM = { ${hexBytes} };\nconst size_t ${name}_len = ${bmpBytes.length};\n`;
         }
 
+        // Reserved C/C++ keywords and system function names
+        const RESERVED_NAMES = new Set([
+            'auto', 'break', 'case', 'char', 'const', 'continue', 'default', 'do',
+            'double', 'else', 'enum', 'extern', 'float', 'for', 'goto', 'if',
+            'int', 'long', 'register', 'return', 'short', 'signed', 'sizeof', 'static',
+            'struct', 'switch', 'typedef', 'union', 'unsigned', 'void', 'volatile', 'while',
+            'class', 'namespace', 'template', 'typename', 'virtual', 'private', 'public', 'protected',
+            'pause', 'sleep', 'exit', 'abort', 'signal', 'raise', 'time', 'clock',
+        ]);
+
+        function sanitizeIconName(name) {
+            // Convert dashes to underscores
+            const sanitized = name.replace(/-/g, '_');
+            // Check if reserved and prefix if needed
+            if (RESERVED_NAMES.has(sanitized)) {
+                return `icon_${sanitized}`;
+            }
+            return sanitized;
+        }
+
         async function generateIconsH(iconNames) {
             // Process single icon - returns {name, bmpBytes} or null on error
             async function processIcon(iconName) {
@@ -747,7 +767,7 @@
                         img.src = svgDataUrl;
                     });
 
-                    return { name: iconName, bmpBytes };
+                    return { name: sanitizeIconName(iconName), bmpBytes };
                 } catch (err) {
                     console.error(`Failed to generate icon ${iconName}:`, err.message);
                     return null;
@@ -914,6 +934,16 @@
             } else {
                 widget[field] = value;
             }
+            
+            // If command type changed, update entity prefix
+            if (field === 'command_type') {
+                const entityName = getEntityName(widget.entity_id);
+                const newPrefix = getEntityPrefix(value);
+                widget.entity_id = `${newPrefix}.${entityName}`;
+                render(); // Full render to update the prefix display
+                return;
+            }
+            
             // Full render for icon changes (to show new icon in button)
             // Preview-only render for other fields (prevents dropdown issues)
             if (field === 'icon_on' || field === 'icon_off') {
@@ -921,6 +951,38 @@
             } else {
                 renderPreview();
             }
+        }
+
+        function getEntityPrefix(commandType) {
+            const prefixMap = {
+                'SetLightBrightnessPercentage': 'light',
+                'SwitchOnOff': 'switch',
+                'SetCoverPosition': 'cover',
+                'SetFanSpeedPercentage': 'fan',
+                'ActivateScene': 'scene',
+                'RunScript': 'script',
+                'LockUnlock': 'lock',
+                'SetMediaPlayerVolume': 'media_player',
+                'MediaPlayerPlayPause': 'media_player',
+                'AutomationOnOff': 'automation',
+                'SetInputNumber': 'input_number',
+                'InputBooleanToggle': 'input_boolean',
+                'VacuumCommand': 'vacuum'
+            };
+            return prefixMap[commandType] || 'light';
+        }
+
+        function getEntityName(entityId) {
+            if (!entityId || !entityId.includes('.')) return entityId || '';
+            return entityId.split('.')[1];
+        }
+
+        function updateEntityName(index, name) {
+            const widget = state.pages[state.currentPage].widgets[index];
+            if (!widget) return;
+            const prefix = getEntityPrefix(widget.command_type);
+            widget.entity_id = `${prefix}.${name}`;
+            renderPreview();
         }
 
         function updatePageLabel(index, label) {
@@ -1071,17 +1133,55 @@
                     <label>Label</label>
                     <input type="text" value="${widget.label}" onchange="updateWidget(${index}, 'label', this.value)">
 
-                    <label>Entity ID</label>
-                    <input type="text" value="${widget.entity_id}" placeholder="light.living_room" onchange="updateWidget(${index}, 'entity_id', this.value)" >
-
                     <label>Command Type</label>
-                    <select data-widget-index="${index}" data-field="command_type">
-                        <option value="SwitchOnOff" ${widget.command_type === 'SwitchOnOff' ? 'selected' : ''}>Switch On/Off</option>
-                        <option value="SetLightBrightnessPercentage" ${widget.command_type === 'SetLightBrightnessPercentage' ? 'selected' : ''}>Light Brightness</option>
-                        <option value="SetFanSpeedPercentage" ${widget.command_type === 'SetFanSpeedPercentage' ? 'selected' : ''}>Fan Speed</option>
-                        <option value="SetCoverPosition" ${widget.command_type === 'SetCoverPosition' ? 'selected' : ''}>Cover Position</option>
-                        <option value="AutomationOnOff" ${widget.command_type === 'AutomationOnOff' ? 'selected' : ''}>Automation On/Off</option>
+                    <select data-widget-index="${index}" data-field="command_type" onchange="updateWidget(${index}, 'command_type', this.value)">
+                        ${widget.type === 'slider' ? `
+                            <optgroup label="Lights">
+                                <option value="SetLightBrightnessPercentage" ${widget.command_type === 'SetLightBrightnessPercentage' ? 'selected' : ''}>Light Brightness</option>
+                            </optgroup>
+                            <optgroup label="Covers">
+                                <option value="SetCoverPosition" ${widget.command_type === 'SetCoverPosition' ? 'selected' : ''}>Cover Position</option>
+                            </optgroup>
+                            <optgroup label="Fans">
+                                <option value="SetFanSpeedPercentage" ${widget.command_type === 'SetFanSpeedPercentage' ? 'selected' : ''}>Fan Speed</option>
+                            </optgroup>
+                            <optgroup label="Media Players">
+                                <option value="SetMediaPlayerVolume" ${widget.command_type === 'SetMediaPlayerVolume' ? 'selected' : ''}>Media Player Volume</option>
+                            </optgroup>
+                            <optgroup label="Input Helpers">
+                                <option value="SetInputNumber" ${widget.command_type === 'SetInputNumber' ? 'selected' : ''}>Input Number</option>
+                            </optgroup>
+                            <optgroup label="Vacuum">
+                                <option value="VacuumCommand" ${widget.command_type === 'VacuumCommand' ? 'selected' : ''}>Vacuum Command</option>
+                            </optgroup>
+                        ` : `
+                            <optgroup label="Lights">
+                                <option value="SwitchOnOff" ${widget.command_type === 'SwitchOnOff' ? 'selected' : ''}>Switch On/Off</option>
+                            </optgroup>
+                            <optgroup label="Scenes & Scripts">
+                                <option value="ActivateScene" ${widget.command_type === 'ActivateScene' ? 'selected' : ''}>Activate Scene</option>
+                                <option value="RunScript" ${widget.command_type === 'RunScript' ? 'selected' : ''}>Run Script</option>
+                            </optgroup>
+                            <optgroup label="Locks">
+                                <option value="LockUnlock" ${widget.command_type === 'LockUnlock' ? 'selected' : ''}>Lock/Unlock</option>
+                            </optgroup>
+                            <optgroup label="Media Players">
+                                <option value="MediaPlayerPlayPause" ${widget.command_type === 'MediaPlayerPlayPause' ? 'selected' : ''}>Media Player Play/Pause</option>
+                            </optgroup>
+                            <optgroup label="Automations">
+                                <option value="AutomationOnOff" ${widget.command_type === 'AutomationOnOff' ? 'selected' : ''}>Automation On/Off</option>
+                            </optgroup>
+                            <optgroup label="Input Helpers">
+                                <option value="InputBooleanToggle" ${widget.command_type === 'InputBooleanToggle' ? 'selected' : ''}>Input Boolean</option>
+                            </optgroup>
+                        `}
                     </select>
+
+                    <label>Entity Name</label>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <span style="color: var(--text-muted); white-space: nowrap;">${getEntityPrefix(widget.command_type)}.</span>
+                        <input type="text" value="${getEntityName(widget.entity_id)}" placeholder="living_room" onchange="updateEntityName(${index}, this.value)" style="flex: 1;">
+                    </div>
 
                     <div class="inline-fields">
                         <div>
@@ -1365,6 +1465,53 @@
         // ============================================================
         async function exportConfig() {
             try {
+                // Validate configuration
+                const errors = [];
+                
+                // Check WiFi settings
+                if (!document.getElementById('wifi-ssid').value) {
+                    errors.push('WiFi SSID is required');
+                }
+                if (!document.getElementById('wifi-password').value) {
+                    errors.push('WiFi password is required');
+                }
+                
+                // Check Home Assistant settings
+                if (!document.getElementById('ha-host').value) {
+                    errors.push('Home Assistant host is required');
+                }
+                if (!document.getElementById('ha-token').value) {
+                    errors.push('Home Assistant token is required');
+                }
+                
+                // Check widgets
+                for (let pageIdx = 0; pageIdx < state.pages.length; pageIdx++) {
+                    const page = state.pages[pageIdx];
+                    for (let widgetIdx = 0; widgetIdx < page.widgets.length; widgetIdx++) {
+                        const widget = page.widgets[widgetIdx];
+                        const widgetLabel = `Page ${pageIdx + 1}, Widget ${widgetIdx + 1}`;
+                        
+                        if (!widget.label) {
+                            errors.push(`${widgetLabel}: Label is required`);
+                        }
+                        if (!widget.entity_id || widget.entity_id.endsWith('.')) {
+                            errors.push(`${widgetLabel}: Entity name is required`);
+                        }
+                        if (!widget.icon_on) {
+                            errors.push(`${widgetLabel}: Icon On is required`);
+                        }
+                        if (!widget.icon_off) {
+                            errors.push(`${widgetLabel}: Icon Off is required`);
+                        }
+                    }
+                }
+                
+                // Show errors if any
+                if (errors.length > 0) {
+                    alert('Please fix the following errors:\n\n' + errors.join('\n'));
+                    return;
+                }
+                
                 // First, collect all used icons
                 const usedIcons = new Set();
                 for (const page of state.pages) {
@@ -1488,8 +1635,8 @@ ${navMode === 'tabs' ? '    screen_manager_set_nav_mode(screens, NavigationMode:
                 for (const widget of page.widgets) {
                     if (!widget.entity_id) continue;
                     const entityVar = entityVars[widget.entity_id];
-                    const iconOn = (widget.icon_on || 'lightbulb_outline').replace(/-/g, '_');
-                    const iconOff = (widget.icon_off || 'lightbulb_off_outline').replace(/-/g, '_');
+                    const iconOn = sanitizeIconName(widget.icon_on || 'lightbulb-outline');
+                    const iconOff = sanitizeIconName(widget.icon_off || 'lightbulb-off-outline');
 
                     if (widget.type === 'button') {
                         code += `

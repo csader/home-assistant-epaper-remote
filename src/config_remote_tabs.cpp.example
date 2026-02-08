@@ -44,28 +44,42 @@ void configure_remote(Configuration* config, EntityStore* store, ScreenManager* 
         .entity_id = "light.bedroom",
         .command_type = CommandType::SetLightBrightnessPercentage,
     };
-    EntityConfig kitchen_lights = {
-        .entity_id = "light.kitchen",
-        .command_type = CommandType::SetLightBrightnessPercentage,
-    };
 
-    // Climate
-    EntityConfig air_purifier = {
-        .entity_id = "fan.air_purifier",
-        .command_type = CommandType::SetFanSpeedPercentage,
+    // Covers & Fans
+    EntityConfig bedroom_shades = {
+        .entity_id = "cover.bedroom_shades",
+        .command_type = CommandType::SetCoverPosition,
     };
-    EntityConfig bedroom_fan = {
-        .entity_id = "fan.bedroom",
+    EntityConfig ceiling_fan = {
+        .entity_id = "fan.ceiling_fan",
         .command_type = CommandType::SetFanSpeedPercentage,
     };
 
-    // Automations
+    // Media & Scenes
+    EntityConfig speaker_volume = {
+        .entity_id = "media_player.living_room_speaker",
+        .command_type = CommandType::SetMediaPlayerVolume,
+    };
+    EntityConfig tv_play_pause = {
+        .entity_id = "media_player.living_room_tv",
+        .command_type = CommandType::MediaPlayerPlayPause,
+    };
+    EntityConfig movie_scene = {
+        .entity_id = "scene.movie_time",
+        .command_type = CommandType::ActivateScene,
+    };
+    EntityConfig morning_routine = {
+        .entity_id = "script.morning_routine",
+        .command_type = CommandType::RunScript,
+    };
+
+    // Security & Automations
+    EntityConfig front_door = {
+        .entity_id = "lock.front_door",
+        .command_type = CommandType::LockUnlock,
+    };
     EntityConfig night_mode = {
         .entity_id = "automation.night_mode",
-        .command_type = CommandType::AutomationOnOff,
-    };
-    EntityConfig away_mode = {
-        .entity_id = "automation.away_mode",
         .command_type = CommandType::AutomationOnOff,
     };
 
@@ -73,12 +87,12 @@ void configure_remote(Configuration* config, EntityStore* store, ScreenManager* 
     // PAGE 1: Lights
     // The second parameter to screen_manager_add_page is the tab label
     // =========================================================================
-    Screen* lights_page = screen_manager_add_page(screens, "Lights");
+    Screen* page1 = screen_manager_add_page(screens, "Lights");
 
     screen_add_slider(
         SliderConfig{
             .entity_ref = store_add_entity(store, living_room_lights),
-            .label = "Living room",
+            .label = "Living Room",
             .icon_on = lightbulb_outline,
             .icon_off = lightbulb_off_outline,
             .pos_x = 30,
@@ -86,7 +100,7 @@ void configure_remote(Configuration* config, EntityStore* store, ScreenManager* 
             .width = DISPLAY_WIDTH - 60,
             .height = 170,
         },
-        lights_page);
+        page1);
 
     screen_add_slider(
         SliderConfig{
@@ -95,80 +109,113 @@ void configure_remote(Configuration* config, EntityStore* store, ScreenManager* 
             .icon_on = lightbulb_outline,
             .icon_off = lightbulb_off_outline,
             .pos_x = 30,
-            .pos_y = 240,
+            .pos_y = 220,
             .width = DISPLAY_WIDTH - 60,
             .height = 170,
         },
-        lights_page);
-
-    screen_add_slider(
-        SliderConfig{
-            .entity_ref = store_add_entity(store, kitchen_lights),
-            .label = "Kitchen",
-            .icon_on = lightbulb_outline,
-            .icon_off = lightbulb_off_outline,
-            .pos_x = 30,
-            .pos_y = 450,
-            .width = DISPLAY_WIDTH - 60,
-            .height = 170,
-        },
-        lights_page);
+        page1);
 
     // =========================================================================
     // PAGE 2: Climate
     // =========================================================================
-    Screen* climate_page = screen_manager_add_page(screens, "Climate");
+    Screen* page2 = screen_manager_add_page(screens, "Climate");
 
     screen_add_slider(
         SliderConfig{
-            .entity_ref = store_add_entity(store, air_purifier),
-            .label = "Air purifier",
-            .icon_on = fan,
-            .icon_off = fan_off,
+            .entity_ref = store_add_entity(store, bedroom_shades),
+            .label = "Shades",
+            .icon_on = blinds_open,
+            .icon_off = blinds,
             .pos_x = 30,
             .pos_y = 30,
             .width = DISPLAY_WIDTH - 60,
             .height = 170,
         },
-        climate_page);
+        page2);
 
     screen_add_slider(
         SliderConfig{
-            .entity_ref = store_add_entity(store, bedroom_fan),
-            .label = "Bedroom fan",
+            .entity_ref = store_add_entity(store, ceiling_fan),
+            .label = "Ceiling Fan",
             .icon_on = fan,
             .icon_off = fan_off,
             .pos_x = 30,
-            .pos_y = 240,
+            .pos_y = 220,
             .width = DISPLAY_WIDTH - 60,
             .height = 170,
         },
-        climate_page);
+        page2);
+
+    screen_add_slider(
+        SliderConfig{
+            .entity_ref = store_add_entity(store, speaker_volume),
+            .label = "Volume",
+            .icon_on = volume_high,
+            .icon_off = volume_low,
+            .pos_x = 30,
+            .pos_y = 410,
+            .width = DISPLAY_WIDTH - 60,
+            .height = 170,
+        },
+        page2);
 
     // =========================================================================
-    // PAGE 3: Auto
+    // PAGE 3: Controls
     // =========================================================================
-    Screen* auto_page = screen_manager_add_page(screens, "Auto");
+    Screen* page3 = screen_manager_add_page(screens, "Controls");
+
+    screen_add_button(
+        ButtonConfig{
+            .entity_ref = store_add_entity(store, movie_scene),
+            .label = "Movie",
+            .icon_on = movie,
+            .icon_off = movie,
+            .pos_x = 30,
+            .pos_y = 30,
+        },
+        page3);
+
+    screen_add_button(
+        ButtonConfig{
+            .entity_ref = store_add_entity(store, morning_routine),
+            .label = "Morning",
+            .icon_on = weather_sunny,
+            .icon_off = weather_sunny,
+            .pos_x = 150,
+            .pos_y = 30,
+        },
+        page3);
+
+    screen_add_button(
+        ButtonConfig{
+            .entity_ref = store_add_entity(store, front_door),
+            .label = "Door",
+            .icon_on = lock,
+            .icon_off = lock_open,
+            .pos_x = 270,
+            .pos_y = 30,
+        },
+        page3);
+
+    screen_add_button(
+        ButtonConfig{
+            .entity_ref = store_add_entity(store, tv_play_pause),
+            .label = "TV",
+            .icon_on = play,
+            .icon_off = pause,
+            .pos_x = 390,
+            .pos_y = 30,
+        },
+        page3);
 
     screen_add_button(
         ButtonConfig{
             .entity_ref = store_add_entity(store, night_mode),
-            .label = "Night mode",
-            .icon_on = robot_outline,
-            .icon_off = robot_off_outline,
+            .label = "Night",
+            .icon_on = weather_night,
+            .icon_off = weather_night,
             .pos_x = 30,
-            .pos_y = 30,
+            .pos_y = 150,
         },
-        auto_page);
-
-    screen_add_button(
-        ButtonConfig{
-            .entity_ref = store_add_entity(store, away_mode),
-            .label = "Away mode",
-            .icon_on = robot_outline,
-            .icon_off = robot_off_outline,
-            .pos_x = 30,
-            .pos_y = 170,
-        },
-        auto_page);
+        page3);
 }

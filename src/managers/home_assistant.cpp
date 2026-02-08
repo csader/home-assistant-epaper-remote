@@ -338,6 +338,62 @@ void hass_send_command(home_assistant_context_t* hass, Command* cmd) {
         cJSON_AddStringToObject(service_data, "entity_id", cmd->entity_id);
         cJSON_AddNumberToObject(service_data, "position", cmd->value);
         break;
+    case CommandType::ActivateScene:
+        cJSON_AddStringToObject(root, "domain", "scene");
+        cJSON_AddStringToObject(root, "service", "turn_on");
+        cJSON_AddItemToObject(root, "service_data", service_data = cJSON_CreateObject());
+        cJSON_AddStringToObject(service_data, "entity_id", cmd->entity_id);
+        break;
+    case CommandType::RunScript:
+        cJSON_AddStringToObject(root, "domain", "script");
+        cJSON_AddStringToObject(root, "service", "turn_on");
+        cJSON_AddItemToObject(root, "service_data", service_data = cJSON_CreateObject());
+        cJSON_AddStringToObject(service_data, "entity_id", cmd->entity_id);
+        break;
+    case CommandType::LockUnlock:
+        cJSON_AddStringToObject(root, "domain", "lock");
+        cJSON_AddStringToObject(root, "service", cmd->value == 0 ? "unlock" : "lock");
+        cJSON_AddItemToObject(root, "service_data", service_data = cJSON_CreateObject());
+        cJSON_AddStringToObject(service_data, "entity_id", cmd->entity_id);
+        break;
+    case CommandType::SetMediaPlayerVolume:
+        cJSON_AddStringToObject(root, "domain", "media_player");
+        cJSON_AddStringToObject(root, "service", "volume_set");
+        cJSON_AddItemToObject(root, "service_data", service_data = cJSON_CreateObject());
+        cJSON_AddStringToObject(service_data, "entity_id", cmd->entity_id);
+        cJSON_AddNumberToObject(service_data, "volume_level", cmd->value / 100.0);
+        break;
+    case CommandType::MediaPlayerPlayPause:
+        cJSON_AddStringToObject(root, "domain", "media_player");
+        cJSON_AddStringToObject(root, "service", cmd->value == 0 ? "media_pause" : "media_play");
+        cJSON_AddItemToObject(root, "service_data", service_data = cJSON_CreateObject());
+        cJSON_AddStringToObject(service_data, "entity_id", cmd->entity_id);
+        break;
+    case CommandType::SetInputNumber:
+        cJSON_AddStringToObject(root, "domain", "input_number");
+        cJSON_AddStringToObject(root, "service", "set_value");
+        cJSON_AddItemToObject(root, "service_data", service_data = cJSON_CreateObject());
+        cJSON_AddStringToObject(service_data, "entity_id", cmd->entity_id);
+        cJSON_AddNumberToObject(service_data, "value", cmd->value);
+        break;
+    case CommandType::InputBooleanToggle:
+        cJSON_AddStringToObject(root, "domain", "input_boolean");
+        cJSON_AddStringToObject(root, "service", cmd->value == 0 ? "turn_off" : "turn_on");
+        cJSON_AddItemToObject(root, "service_data", service_data = cJSON_CreateObject());
+        cJSON_AddStringToObject(service_data, "entity_id", cmd->entity_id);
+        break;
+    case CommandType::VacuumCommand:
+        cJSON_AddStringToObject(root, "domain", "vacuum");
+        if (cmd->value == 0) {
+            cJSON_AddStringToObject(root, "service", "stop");
+        } else if (cmd->value == 1) {
+            cJSON_AddStringToObject(root, "service", "start");
+        } else {
+            cJSON_AddStringToObject(root, "service", "return_to_base");
+        }
+        cJSON_AddItemToObject(root, "service_data", service_data = cJSON_CreateObject());
+        cJSON_AddStringToObject(service_data, "entity_id", cmd->entity_id);
+        break;
     default:
         ESP_LOGI(TAG, "Service type not supported");
         cJSON_Delete(root);
