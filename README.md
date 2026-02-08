@@ -86,6 +86,9 @@ Tap to toggle between on/off states. Shows different icons for on and off states
 ### Sliders
 Drag along the slider to adjust values (0-100%). Tap the icon on the left to quickly toggle between off (0) and on (100).
 
+### Thermostats
+Control climate devices with mode button and +/- temperature buttons. The mode button cycles through off/heat/cool/auto modes. Tap +/- buttons to adjust the target temperature within a configurable range. Displays both current and target temperatures (e.g., "72/75°F").
+
 ## Supported Entity Types
 
 ### Lights
@@ -118,6 +121,12 @@ Drag along the slider to adjust values (0-100%). Tap the icon on the left to qui
 
 ### Vacuum
 - **VacuumCommand**: Control vacuum (0=stop, 1=start, 2+=dock)
+
+### Climate (Thermostats)
+- **SetClimateMode**: Control HVAC mode (0=off, 1=heat, 2=cool, 3=auto)
+- **SetClimateTemperature**: Set target temperature (configurable range, e.g., 60-85°F or 16-30°C)
+
+Note: Thermostat widgets use two entity slots (one for mode, one for temperature) and display both current and target temperatures.
 
 ### Build and upload
 

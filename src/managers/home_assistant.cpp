@@ -90,9 +90,32 @@ void hass_parse_entity_update(home_assistant_context_t* hass, uint8_t widget_idx
     // Parse state
     cJSON* state = cJSON_GetObjectItem(item, "s");
     if (cJSON_IsString(state)) {
-        if (strcmp(state->valuestring, "on") == 0) {
+        // For climate entities, state contains the hvac_mode
+        if (hass->store->entities[widget_idx].command_type == CommandType::SetClimateMode) {
+            ESP_LOGI(TAG, "Climate mode entity %d state: %s", widget_idx, state->valuestring);
+            if (strcmp(state->valuestring, "off") == 0) {
+                hass->entity_values[widget_idx] = 0;
+                hass->entity_states[widget_idx] = false;
+            } else if (strcmp(state->valuestring, "heat") == 0) {
+                hass->entity_values[widget_idx] = 1;
+                hass->entity_states[widget_idx] = true;
+            } else if (strcmp(state->valuestring, "cool") == 0) {
+                hass->entity_values[widget_idx] = 2;
+                hass->entity_states[widget_idx] = true;
+            } else if (strcmp(state->valuestring, "auto") == 0 || strcmp(state->valuestring, "heat_cool") == 0) {
+                hass->entity_values[widget_idx] = 3;
+                hass->entity_states[widget_idx] = true;
+            }
+        } else if (strcmp(state->valuestring, "on") == 0 || 
+                   strcmp(state->valuestring, "locked") == 0 ||
+                   strcmp(state->valuestring, "playing") == 0 ||
+                   strcmp(state->valuestring, "open") == 0) {
             hass->entity_states[widget_idx] = true;
-        } else if (strcmp(state->valuestring, "off") == 0) {
+        } else if (strcmp(state->valuestring, "off") == 0 ||
+                   strcmp(state->valuestring, "unlocked") == 0 ||
+                   strcmp(state->valuestring, "paused") == 0 ||
+                   strcmp(state->valuestring, "idle") == 0 ||
+                   strcmp(state->valuestring, "closed") == 0) {
             hass->entity_states[widget_idx] = false;
         }
     }
@@ -123,11 +146,47 @@ void hass_parse_entity_update(home_assistant_context_t* hass, uint8_t widget_idx
         if (cJSON_IsNumber(current_position)) {
             hass->entity_values[widget_idx] = current_position->valueint;
         }
+
+        // Extract climate hvac_mode (off/heat/cool/auto) - only for SetClimateMode entities
+        // Note: hvac_mode is already parsed from the state field above, so we don't need to parse it here
+
+        // Extract climate temperature - only for SetClimateTemperature entities
+        if (hass->store->entities[widget_idx].command_type == CommandType::SetClimateTemperature) {
+            ESP_LOGI(TAG, "Parsing climate temperature for entity %d", widget_idx);
+            cJSON* temperature = cJSON_GetObjectItem(attributes, "temperature");
+            if (cJSON_IsNumber(temperature)) {
+                hass->entity_values[widget_idx] = (int8_t)temperature->valuedouble;
+                hass->entity_states[widget_idx] = true;
+                ESP_LOGI(TAG, "Climate temp entity %d: target=%d", widget_idx, (int)temperature->valuedouble);
+            } else {
+                ESP_LOGI(TAG, "Climate temp entity %d: no temperature attribute", widget_idx);
+                // If no temperature attribute, use a default (70°F / 21°C)
+                if (hass->entity_values[widget_idx] == 0) {
+                    hass->entity_values[widget_idx] = 70;
+                }
+                hass->entity_states[widget_idx] = true;
+            }
+            
+            // Also store current_temperature for display
+            cJSON* current_temperature = cJSON_GetObjectItem(attributes, "current_temperature");
+            if (cJSON_IsNumber(current_temperature)) {
+                hass->store->entities[widget_idx].current_temperature = (int8_t)current_temperature->valuedouble;
+                ESP_LOGI(TAG, "Climate temp entity %d: current=%d", widget_idx, (int)current_temperature->valuedouble);
+            } else {
+                ESP_LOGI(TAG, "Climate temp entity %d: no current_temperature attribute", widget_idx);
+                // Default current temp if not provided
+                if (hass->store->entities[widget_idx].current_temperature == 0) {
+                    hass->store->entities[widget_idx].current_temperature = 70;
+                }
+            }
+        }
     }
 
     // Update the full state
     TickType_t now = xTaskGetTickCount();
-    if ((now - hass->last_command_sent_at_ms[widget_idx]) < pdMS_TO_TICKS(HASS_IGNORE_UPDATE_DELAY_MS)) {
+    // Only ignore updates if a command was recently sent (non-zero timestamp)
+    if (hass->last_command_sent_at_ms[widget_idx] != 0 && 
+        (now - hass->last_command_sent_at_ms[widget_idx]) < pdMS_TO_TICKS(HASS_IGNORE_UPDATE_DELAY_MS)) {
         ESP_LOGI(TAG, "Ignoring update of entity %s", hass->entity_ids[widget_idx]);
     } else {
         uint8_t value = 0;
@@ -151,10 +210,12 @@ void hass_handle_entity_update(home_assistant_context_t* hass, cJSON* event) {
     if (cJSON_IsObject(initial_values)) {
         cJSON* item = NULL;
         cJSON_ArrayForEach(item, initial_values) {
-            int16_t entity_id = hass_match_entity(hass, item->string);
-            if (entity_id != -1) {
-                ESP_LOGI(TAG, "Found initial value for widget %d (%s)", entity_id, item->string);
-                hass_parse_entity_update(hass, entity_id, item);
+            // Process all entities with this ID (climate entities appear twice)
+            for (uint8_t i = 0; i < hass->entity_count; i++) {
+                if (strcmp(item->string, hass->entity_ids[i]) == 0) {
+                    ESP_LOGI(TAG, "Found initial value for widget %d (%s)", i, item->string);
+                    hass_parse_entity_update(hass, i, item);
+                }
             }
         }
     }
@@ -164,12 +225,14 @@ void hass_handle_entity_update(home_assistant_context_t* hass, cJSON* event) {
     if (cJSON_IsObject(changes)) {
         cJSON* item = NULL;
         cJSON_ArrayForEach(item, changes) {
-            int16_t entity_id = hass_match_entity(hass, item->string);
-            if (entity_id != -1) {
-                cJSON* plus_value = cJSON_GetObjectItem(item, "+");
-                if (cJSON_IsObject(plus_value)) {
-                    ESP_LOGI(TAG, "Found update for widget %d (%s)", entity_id, item->string);
-                    hass_parse_entity_update(hass, entity_id, plus_value);
+            // Process all entities with this ID (climate entities appear twice)
+            for (uint8_t i = 0; i < hass->entity_count; i++) {
+                if (strcmp(item->string, hass->entity_ids[i]) == 0) {
+                    cJSON* plus_value = cJSON_GetObjectItem(item, "+");
+                    if (cJSON_IsObject(plus_value)) {
+                        ESP_LOGI(TAG, "Found update for widget %d (%s)", i, item->string);
+                        hass_parse_entity_update(hass, i, plus_value);
+                    }
                 }
             }
         }
@@ -394,6 +457,23 @@ void hass_send_command(home_assistant_context_t* hass, Command* cmd) {
         cJSON_AddItemToObject(root, "service_data", service_data = cJSON_CreateObject());
         cJSON_AddStringToObject(service_data, "entity_id", cmd->entity_id);
         break;
+    case CommandType::SetClimateMode:
+        cJSON_AddStringToObject(root, "domain", "climate");
+        cJSON_AddStringToObject(root, "service", "set_hvac_mode");
+        cJSON_AddItemToObject(root, "service_data", service_data = cJSON_CreateObject());
+        cJSON_AddStringToObject(service_data, "entity_id", cmd->entity_id);
+        {
+            const char* modes[] = {"off", "heat", "cool", "auto"};
+            cJSON_AddStringToObject(service_data, "hvac_mode", modes[cmd->value % 4]);
+        }
+        break;
+    case CommandType::SetClimateTemperature:
+        cJSON_AddStringToObject(root, "domain", "climate");
+        cJSON_AddStringToObject(root, "service", "set_temperature");
+        cJSON_AddItemToObject(root, "service_data", service_data = cJSON_CreateObject());
+        cJSON_AddStringToObject(service_data, "entity_id", cmd->entity_id);
+        cJSON_AddNumberToObject(service_data, "temperature", cmd->value);
+        break;
     default:
         ESP_LOGI(TAG, "Service type not supported");
         cJSON_Delete(root);
@@ -435,6 +515,7 @@ void home_assistant_task(void* arg) {
     for (uint8_t entity_idx = 0; entity_idx < store->entity_count; entity_idx++) {
         hass->entity_ids[entity_idx] = store->entities[entity_idx].entity_id;
         hass->entity_values[entity_idx] = -1;
+        hass->last_command_sent_at_ms[entity_idx] = 0;
     }
 
     esp_websocket_register_events(hass->client, WEBSOCKET_EVENT_ANY, hass_ws_event_handler, (void*)hass);

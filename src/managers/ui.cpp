@@ -6,6 +6,7 @@
 #include "draw.h"
 #include "store.h"
 #include "widgets/Widget.h"
+#include "widgets/Thermostat.h"
 #include <algorithm>
 
 static const char* TAG = "ui";
@@ -143,9 +144,25 @@ void ui_draw_navigation(FASTEPD* epaper, ScreenManager* screens, uint8_t current
     }
 }
 
-void ui_main_screen_full_draw(UIState* state, BitDepth depth, Screen* screen, ScreenManager* screens, FASTEPD* epaper) {
+void ui_main_screen_full_draw(UIState* state, BitDepth depth, Screen* screen, ScreenManager* screens, FASTEPD* epaper, EntityStore* store) {
     for (uint8_t widget_idx = 0; widget_idx < screen->widget_count; widget_idx++) {
-        screen->widgets[widget_idx]->fullDraw(epaper, depth, state->widget_values[widget_idx]);
+        // Check if this is a thermostat widget
+        if (screen->widgets[widget_idx]->getType() == WidgetType::Thermostat) {
+            Thermostat* thermostat = static_cast<Thermostat*>(screen->widgets[widget_idx]);
+            // Update thermostat with mode, target temp, and current temp
+            thermostat->setMode(state->widget_values[widget_idx]);
+            if (widget_idx + 1 < screen->widget_count) {
+                thermostat->setTargetTemp(state->widget_values[widget_idx + 1]);
+                // Get current temperature from entity store
+                uint8_t temp_entity_idx = screen->entity_ids[widget_idx + 1];
+                thermostat->setCurrentTemp(store->entities[temp_entity_idx].current_temperature);
+            }
+            thermostat->fullDraw(epaper, depth, state->widget_values[widget_idx]);
+            // Skip the next widget index since thermostat uses two slots
+            widget_idx++;
+        } else {
+            screen->widgets[widget_idx]->fullDraw(epaper, depth, state->widget_values[widget_idx]);
+        }
     }
 
     // Draw navigation
@@ -210,13 +227,13 @@ void ui_task(void* arg) {
 
                 if (current_state.mode == UiMode::MainScreen) {
                     // Display the main screen in its full glory
-                    ui_main_screen_full_draw(&current_state, BitDepth::BD_4BPP, current_screen, ctx->screens, ctx->epaper);
+                    ui_main_screen_full_draw(&current_state, BitDepth::BD_4BPP, current_screen, ctx->screens, ctx->epaper, ctx->store);
                     ctx->epaper->fullUpdate(CLEAR_SLOW, true);
 
                     // Preload the 1BPP version for fast updates
                     ctx->epaper->setMode(BB_MODE_1BPP);
                     ctx->epaper->fillScreen(BBEP_WHITE);
-                    ui_main_screen_full_draw(&current_state, BitDepth::BD_1BPP, current_screen, ctx->screens, ctx->epaper);
+                    ui_main_screen_full_draw(&current_state, BitDepth::BD_1BPP, current_screen, ctx->screens, ctx->epaper, ctx->store);
                     ctx->epaper->backupPlane();
                 } else {
                     ui_show_message(current_state.mode, ctx->epaper);
@@ -230,7 +247,33 @@ void ui_task(void* arg) {
                     uint8_t displayed_value = displayed_state.widget_values[widget_idx];
                     uint8_t current_value = current_state.widget_values[widget_idx];
 
-                    if (displayed_value != current_value) {
+                    // Check if this is a thermostat widget
+                    if (current_screen->widgets[widget_idx]->getType() == WidgetType::Thermostat) {
+                        Thermostat* thermostat = static_cast<Thermostat*>(current_screen->widgets[widget_idx]);
+                        // Update thermostat with mode, target temp, and current temp
+                        thermostat->setMode(current_state.widget_values[widget_idx]);
+                        if (widget_idx + 1 < current_screen->widget_count) {
+                            thermostat->setTargetTemp(current_state.widget_values[widget_idx + 1]);
+                            // Get current temperature from entity store
+                            uint8_t temp_entity_idx = current_screen->entity_ids[widget_idx + 1];
+                            thermostat->setCurrentTemp(ctx->store->entities[temp_entity_idx].current_temperature);
+                        }
+                        
+                        // Check if either mode or temp changed
+                        bool changed = (displayed_value != current_value);
+                        if (widget_idx + 1 < current_screen->widget_count) {
+                            changed = changed || (displayed_state.widget_values[widget_idx + 1] != current_state.widget_values[widget_idx + 1]);
+                        }
+                        
+                        if (changed) {
+                            ESP_LOGI(TAG, "updating thermostat widget %d", widget_idx);
+                            Rect damage = thermostat->partialDraw(ctx->epaper, BitDepth::BD_1BPP, displayed_value, current_value);
+                            accumulate_damage(damage_accum, damage);
+                        }
+                        
+                        // Skip next widget index
+                        widget_idx++;
+                    } else if (displayed_value != current_value) {
                         ESP_LOGI(TAG, "updating widget %d from %d to %d", widget_idx, displayed_value, current_value);
                         Rect damage = current_screen->widgets[widget_idx]->partialDraw(ctx->epaper, BitDepth::BD_1BPP, displayed_value,
                                                                                     current_value);
@@ -258,13 +301,13 @@ void ui_task(void* arg) {
             // Cleanup the display
             ctx->epaper->setMode(BB_MODE_4BPP);
             ctx->epaper->fillScreen(0xf);
-            ui_main_screen_full_draw(&displayed_state, BitDepth::BD_4BPP, current_screen, ctx->screens, ctx->epaper);
+            ui_main_screen_full_draw(&displayed_state, BitDepth::BD_4BPP, current_screen, ctx->screens, ctx->epaper, ctx->store);
             ctx->epaper->fullUpdate(CLEAR_FAST, true);
 
             // Preload the 1bpp version for fast updates
             ctx->epaper->setMode(BB_MODE_1BPP);
             ctx->epaper->fillScreen(BBEP_WHITE);
-            ui_main_screen_full_draw(&displayed_state, BitDepth::BD_1BPP, current_screen, ctx->screens, ctx->epaper);
+            ui_main_screen_full_draw(&displayed_state, BitDepth::BD_1BPP, current_screen, ctx->screens, ctx->epaper, ctx->store);
             ctx->epaper->backupPlane();
 
             display_is_dirty = false;

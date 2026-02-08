@@ -28,7 +28,7 @@ constexpr uint32_t HASS_TASK_SEND_DELAY_MS = 500;
 constexpr uint32_t HASS_IGNORE_UPDATE_DELAY_MS = 1000;
 
 // Other constants
-constexpr size_t MAX_ENTITIES = 8;
+constexpr size_t MAX_ENTITIES = 16;
 constexpr size_t MAX_WIDGETS_PER_SCREEN = 8;
 constexpr size_t MAX_PAGES = 4;
 constexpr uint32_t TOUCH_RELEASE_TIMEOUT_MS = 50;

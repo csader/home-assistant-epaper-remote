@@ -22,6 +22,8 @@ enum class CommandType : uint8_t {
     SetInputNumber,
     InputBooleanToggle,
     VacuumCommand,
+    SetClimateMode,
+    SetClimateTemperature,
 };
 
 struct HomeAssistantEntity {
@@ -30,6 +32,7 @@ struct HomeAssistantEntity {
     uint8_t current_value;
     uint8_t command_value;
     bool command_pending;
+    int8_t current_temperature; // For climate entities
 };
 
 struct EntityConfig {

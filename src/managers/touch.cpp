@@ -1,6 +1,7 @@
 #include "managers/touch.h"
 #include "boards.h"
 #include "constants.h"
+#include "widgets/Thermostat.h"
 
 static const char* TAG = "touch";
 
@@ -114,10 +115,23 @@ void touch_task(void* arg) {
                     touch_event.y = ti.y[0];
                     ESP_LOGI(TAG, "Widget %d, Coordinates: %d %d", active_widget, touch_event.x, touch_event.y);
 
-                    // Get the new value
-                    widget_current_value = screen->widgets[active_widget]->getValueFromTouch(&touch_event, widget_original_value);
-
-                    store_send_command(store, screen->entity_ids[active_widget], widget_current_value);
+                    // Check if this is a thermostat widget
+                    if (screen->widgets[active_widget]->getType() == WidgetType::Thermostat) {
+                        Thermostat* thermostat = static_cast<Thermostat*>(screen->widgets[active_widget]);
+                        if (!thermostat->isModeTouch(&touch_event)) {
+                            // Dragging temperature slider
+                            widget_current_value = screen->widgets[active_widget]->getValueFromTouch(&touch_event, widget_original_value);
+                            store_send_command(store, screen->entity_ids[active_widget + 1], widget_current_value);
+                        } else {
+                            // Mode button (no drag)
+                            widget_current_value = screen->widgets[active_widget]->getValueFromTouch(&touch_event, widget_original_value);
+                            store_send_command(store, screen->entity_ids[active_widget], widget_current_value);
+                        }
+                    } else {
+                        // Regular widget
+                        widget_current_value = screen->widgets[active_widget]->getValueFromTouch(&touch_event, widget_original_value);
+                        store_send_command(store, screen->entity_ids[active_widget], widget_current_value);
+                    }
                 }
             } else if (touching == false) {
                 touch_event.x = ti.x[0];
@@ -135,11 +149,28 @@ void touch_task(void* arg) {
                             ESP_LOGI(TAG, "Starting touch on widget %d", widget_idx);
                             active_widget = widget_idx;
 
-                            // Get the new value
-                            widget_original_value = ui_state->widget_values[widget_idx];
-                            widget_current_value = screen->widgets[widget_idx]->getValueFromTouch(&touch_event, widget_original_value);
-
-                            store_send_command(store, screen->entity_ids[active_widget], widget_current_value);
+                            // Check if this is a thermostat widget
+                            if (screen->widgets[widget_idx]->getType() == WidgetType::Thermostat) {
+                                Thermostat* thermostat = static_cast<Thermostat*>(screen->widgets[widget_idx]);
+                                // Thermostat uses two consecutive entity slots
+                                // widget_idx = mode entity, widget_idx+1 = temp entity
+                                if (thermostat->isModeTouch(&touch_event)) {
+                                    // Touching mode button - use mode entity
+                                    widget_original_value = ui_state->widget_values[widget_idx];
+                                    widget_current_value = screen->widgets[widget_idx]->getValueFromTouch(&touch_event, widget_original_value);
+                                    store_send_command(store, screen->entity_ids[widget_idx], widget_current_value);
+                                } else {
+                                    // Touching temperature slider - use temp entity (next slot)
+                                    widget_original_value = ui_state->widget_values[widget_idx + 1];
+                                    widget_current_value = screen->widgets[widget_idx]->getValueFromTouch(&touch_event, widget_original_value);
+                                    store_send_command(store, screen->entity_ids[widget_idx + 1], widget_current_value);
+                                }
+                            } else {
+                                // Regular widget
+                                widget_original_value = ui_state->widget_values[widget_idx];
+                                widget_current_value = screen->widgets[widget_idx]->getValueFromTouch(&touch_event, widget_original_value);
+                                store_send_command(store, screen->entity_ids[active_widget], widget_current_value);
+                            }
 
                             break;
                         }

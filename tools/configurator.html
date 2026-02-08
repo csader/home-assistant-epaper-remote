@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Home Assistant ePaper Remote Configurator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg: #1a1a2e;
@@ -789,8 +792,8 @@
                 .filter(r => r !== null)
                 .sort((a, b) => a.name.localeCompare(b.name))
                 .forEach(({ name, bmpBytes }) => {
-                    const varName = name.replace(/-/g, '_');
-                    headerContent += bmpToCArray(varName, bmpBytes);
+                    // name is already sanitized from processIcon
+                    headerContent += bmpToCArray(name, bmpBytes);
                     headerContent += '\n';
                 });
 
@@ -880,10 +883,12 @@
         // Slider layout matches firmware: label at top, 100px bar at bottom
         // Total height = 170 gives ~10px gap between label text and bar
         const SLIDER_HEIGHT = 170;
+        const THERMOSTAT_HEIGHT = 170;
         const BUTTON_SIZE_FIRMWARE = 100; // Firmware's fixed slider bar height
 
         function getWidgetHeight(widget) {
             if (widget.type === 'button') return 100;
+            if (widget.type === 'thermostat') return THERMOSTAT_HEIGHT;
             return SLIDER_HEIGHT;
         }
 
@@ -900,14 +905,26 @@
             const widget = {
                 type,
                 entity_id: '',
-                command_type: type === 'button' ? 'SwitchOnOff' : 'SetLightBrightnessPercentage',
-                label: type === 'button' ? 'Button' : 'Slider',
+                command_type: type === 'button' ? 'SwitchOnOff' : type === 'thermostat' ? 'SetClimateMode' : 'SetLightBrightnessPercentage',
+                label: type === 'button' ? 'Button' : type === 'thermostat' ? 'Thermostat' : 'Slider',
                 icon_on: 'lightbulb-outline',
                 icon_off: 'lightbulb-off-outline',
                 pos_x: 30,
                 pos_y: posY,
-                width: type === 'slider' ? 480 : 100
+                width: type === 'slider' || type === 'thermostat' ? 480 : 100
             };
+            
+            // Thermostat-specific fields
+            if (type === 'thermostat') {
+                widget.icon_heat = 'fire';
+                widget.icon_cool = 'snowflake';
+                widget.icon_auto = 'autorenew';
+                widget.icon_off = 'power';
+                widget.min_temp = 60;
+                widget.max_temp = 85;
+                widget.temp_unit = 'F';
+            }
+            
             page.widgets.push(widget);
             render();
         }
@@ -967,7 +984,9 @@
                 'AutomationOnOff': 'automation',
                 'SetInputNumber': 'input_number',
                 'InputBooleanToggle': 'input_boolean',
-                'VacuumCommand': 'vacuum'
+                'VacuumCommand': 'vacuum',
+                'SetClimateMode': 'climate',
+                'SetClimateTemperature': 'climate'
             };
             return prefixMap[commandType] || 'light';
         }
@@ -1103,6 +1122,7 @@
                 <h3>Widgets</h3>
                 <button class="small" onclick="addWidget('button')">+ Button</button>
                 <button class="small" onclick="addWidget('slider')">+ Slider</button>
+                <button class="small" onclick="addWidget('thermostat')">+ Thermostat</button>
 
                 <div class="widget-list">
                     ${page.widgets.map((w, i) => renderWidgetEditor(w, i)).join('')}
@@ -1135,7 +1155,11 @@
 
                     <label>Command Type</label>
                     <select data-widget-index="${index}" data-field="command_type" onchange="updateWidget(${index}, 'command_type', this.value)">
-                        ${widget.type === 'slider' ? `
+                        ${widget.type === 'thermostat' ? `
+                            <optgroup label="Climate">
+                                <option value="SetClimateMode" ${widget.command_type === 'SetClimateMode' ? 'selected' : ''}>Climate Mode</option>
+                            </optgroup>
+                        ` : widget.type === 'slider' ? `
                             <optgroup label="Lights">
                                 <option value="SetLightBrightnessPercentage" ${widget.command_type === 'SetLightBrightnessPercentage' ? 'selected' : ''}>Light Brightness</option>
                             </optgroup>
@@ -1185,18 +1209,35 @@
 
                     <div class="inline-fields">
                         <div>
-                            <label>Icon On</label>
-                            <button class="icon-select-btn" onclick="openIconPicker(name => updateWidget(${index}, 'icon_on', name))">
-                                ${iconOnPreview ? `<img src="${iconOnPreview}">` : ''}<span>${widget.icon_on || 'Select...'}</span>
+                            <label>${widget.type === 'thermostat' ? 'Icon Off' : 'Icon On'}</label>
+                            <button class="icon-select-btn" onclick="openIconPicker(name => updateWidget(${index}, '${widget.type === 'thermostat' ? 'icon_off' : 'icon_on'}', name))">
+                                ${widget.type === 'thermostat' ? (getIconPreview(widget.icon_off) ? `<img src="${getIconPreview(widget.icon_off)}">` : '') : (iconOnPreview ? `<img src="${iconOnPreview}">` : '')}<span>${widget.type === 'thermostat' ? (widget.icon_off || 'Select...') : (widget.icon_on || 'Select...')}</span>
                             </button>
                         </div>
                         <div>
-                            <label>Icon Off</label>
-                            <button class="icon-select-btn" onclick="openIconPicker(name => updateWidget(${index}, 'icon_off', name))">
-                                ${iconOffPreview ? `<img src="${iconOffPreview}">` : ''}<span>${widget.icon_off || 'Select...'}</span>
+                            <label>${widget.type === 'thermostat' ? 'Icon Heat' : 'Icon Off'}</label>
+                            <button class="icon-select-btn" onclick="openIconPicker(name => updateWidget(${index}, '${widget.type === 'thermostat' ? 'icon_heat' : 'icon_off'}', name))">
+                                ${widget.type === 'thermostat' ? (getIconPreview(widget.icon_heat) ? `<img src="${getIconPreview(widget.icon_heat)}">` : '') : (iconOffPreview ? `<img src="${iconOffPreview}">` : '')}<span>${widget.type === 'thermostat' ? (widget.icon_heat || 'Select...') : (widget.icon_off || 'Select...')}</span>
                             </button>
                         </div>
                     </div>
+
+                    ${widget.type === 'thermostat' ? `
+                    <div class="inline-fields">
+                        <div>
+                            <label>Icon Cool</label>
+                            <button class="icon-select-btn" onclick="openIconPicker(name => updateWidget(${index}, 'icon_cool', name))">
+                                ${getIconPreview(widget.icon_cool) ? `<img src="${getIconPreview(widget.icon_cool)}">` : ''}<span>${widget.icon_cool || 'Select...'}</span>
+                            </button>
+                        </div>
+                        <div>
+                            <label>Icon Auto</label>
+                            <button class="icon-select-btn" onclick="openIconPicker(name => updateWidget(${index}, 'icon_auto', name))">
+                                ${getIconPreview(widget.icon_auto) ? `<img src="${getIconPreview(widget.icon_auto)}">` : ''}<span>${widget.icon_auto || 'Select...'}</span>
+                            </button>
+                        </div>
+                    </div>
+                    ` : ''}
 
                     <div class="inline-fields" style="margin-top:10px">
                         <div>
@@ -1208,13 +1249,34 @@
                             <input type="number" value="${widget.pos_y}" onchange="updateWidget(${index}, 'pos_y', this.value)">
                         </div>
                     </div>
-                    ${widget.type === 'slider' ? `
+                    ${widget.type === 'slider' || widget.type === 'thermostat' ? `
                     <div class="inline-fields">
                         <div>
                             <label>Width</label>
                             <input type="number" value="${widget.width}" onchange="updateWidget(${index}, 'width', this.value)">
                         </div>
+                        ${widget.type === 'thermostat' ? `
+                        <div>
+                            <label>Temp Unit</label>
+                            <select onchange="updateWidget(${index}, 'temp_unit', this.value)">
+                                <option value="F" ${widget.temp_unit === 'F' ? 'selected' : ''}>°F</option>
+                                <option value="C" ${widget.temp_unit === 'C' ? 'selected' : ''}>°C</option>
+                            </select>
+                        </div>
+                        ` : ''}
                     </div>
+                    ${widget.type === 'thermostat' ? `
+                    <div class="inline-fields">
+                        <div>
+                            <label>Min Temp</label>
+                            <input type="number" value="${widget.min_temp}" onchange="updateWidget(${index}, 'min_temp', this.value)">
+                        </div>
+                        <div>
+                            <label>Max Temp</label>
+                            <input type="number" value="${widget.max_temp}" onchange="updateWidget(${index}, 'max_temp', this.value)">
+                        </div>
+                    </div>
+                    ` : ''}
                     ` : ''}
                 </div>
             `;
@@ -1305,8 +1367,68 @@
                 }
 
                 ctx.fillStyle = '#000';
-                ctx.font = '26px Montserrat, sans-serif';
+                ctx.font = '40px Montserrat, sans-serif';
                 ctx.fillText(widget.label, widget.pos_x + BUTTON_SIZE + 30, widget.pos_y + BUTTON_SIZE / 2 + 9);
+            } else if (widget.type === 'thermostat') {
+                // Draw mode button
+                const centerX = widget.pos_x + BUTTON_SIZE / 2;
+                const centerY = widget.pos_y + BUTTON_SIZE / 2;
+                
+                ctx.fillStyle = '#000';
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, BUTTON_SIZE / 2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                const iconHeatSrc = getIconSrc(widget.icon_heat);
+                const iconImg = getOrLoadImage(iconHeatSrc, renderPreview);
+                if (iconImg) {
+                    const iconPos = (BUTTON_SIZE - BUTTON_ICON_SIZE) / 2;
+                    ctx.filter = 'invert(1)';
+                    ctx.drawImage(iconImg, widget.pos_x + iconPos, widget.pos_y + iconPos, BUTTON_ICON_SIZE, BUTTON_ICON_SIZE);
+                    ctx.filter = 'none';
+                }
+                
+                // Draw label
+                ctx.fillStyle = '#000';
+                ctx.font = '40px Montserrat, sans-serif';
+                ctx.fillText(widget.label, widget.pos_x + BUTTON_SIZE + 30, widget.pos_y + 10 + 26);
+                
+                // Draw +/- buttons
+                const tempY = widget.pos_y + 50;
+                const tempX = widget.pos_x + BUTTON_SIZE + 30;
+                const btnSize = 40;
+                ctx.beginPath();
+                ctx.arc(tempX + btnSize/2, tempY + btnSize/2, btnSize/2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(tempX + btnSize/2, tempY + btnSize/2, btnSize/2 - 3, 0, Math.PI * 2);
+                ctx.fill();
+                // Minus sign
+                ctx.fillStyle = '#000';
+                ctx.fillRect(tempX + btnSize/2 - 10, tempY + btnSize/2 - 2, 20, 4);
+                
+                // Draw + button (right)
+                const plusX = tempX + widget.width - BUTTON_SIZE - 30 - btnSize;
+                ctx.fillStyle = '#000';
+                ctx.beginPath();
+                ctx.arc(plusX + btnSize/2, tempY + btnSize/2, btnSize/2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(plusX + btnSize/2, tempY + btnSize/2, btnSize/2 - 3, 0, Math.PI * 2);
+                ctx.fill();
+                // Plus sign
+                ctx.fillStyle = '#000';
+                ctx.fillRect(plusX + btnSize/2 - 10, tempY + btnSize/2 - 2, 20, 4);
+                ctx.fillRect(plusX + btnSize/2 - 2, tempY + btnSize/2 - 10, 4, 20);
+                
+                // Draw temperature centered between buttons
+                const targetTemp = Math.round((widget.min_temp + widget.max_temp) / 2);
+                const tempText = `70/${targetTemp}${widget.temp_unit}`;
+                const textWidth = ctx.measureText(tempText).width;
+                const tempCenterX = tempX + btnSize + (plusX - tempX - btnSize) / 2;
+                ctx.fillText(tempText, tempCenterX - textWidth / 2, tempY + btnSize/2 + 9);
             } else {
                 // Match firmware positioning: bar at bottom (y + height - 100), label at top
                 const barHeight = BUTTON_SIZE_FIRMWARE; // Fixed 100px like firmware
@@ -1348,7 +1470,7 @@
 
                 // Label at top of widget (matches firmware: rect_.y + font_height)
                 ctx.fillStyle = '#000';
-                ctx.font = '26px Montserrat, sans-serif';
+                ctx.font = '40px Montserrat, sans-serif';
                 ctx.fillText(widget.label, widget.pos_x, widget.pos_y + 30);
             }
         }
@@ -1357,7 +1479,7 @@
             const NAV_BAR_HEIGHT = 60;
             const TAB_PADDING = 20;
             
-            ctx.font = '26px Montserrat, sans-serif';
+            ctx.font = '40px Montserrat, sans-serif';
             ctx.fillStyle = '#000';
 
             // Calculate total width
@@ -1489,7 +1611,8 @@
                     const page = state.pages[pageIdx];
                     for (let widgetIdx = 0; widgetIdx < page.widgets.length; widgetIdx++) {
                         const widget = page.widgets[widgetIdx];
-                        const widgetLabel = `Page ${pageIdx + 1}, Widget ${widgetIdx + 1}`;
+                        const pageName = page.name || `Page ${pageIdx + 1}`;
+                        const widgetLabel = widget.label ? `${pageName} > ${widget.label}` : `${pageName}, Widget ${widgetIdx + 1}`;
                         
                         if (!widget.label) {
                             errors.push(`${widgetLabel}: Label is required`);
@@ -1497,11 +1620,14 @@
                         if (!widget.entity_id || widget.entity_id.endsWith('.')) {
                             errors.push(`${widgetLabel}: Entity name is required`);
                         }
-                        if (!widget.icon_on) {
-                            errors.push(`${widgetLabel}: Icon On is required`);
-                        }
-                        if (!widget.icon_off) {
-                            errors.push(`${widgetLabel}: Icon Off is required`);
+                        if (widget.type === 'thermostat') {
+                            if (!widget.icon_off) errors.push(`${widgetLabel}: Icon Off is required`);
+                            if (!widget.icon_heat) errors.push(`${widgetLabel}: Icon Heat is required`);
+                            if (!widget.icon_cool) errors.push(`${widgetLabel}: Icon Cool is required`);
+                            if (!widget.icon_auto) errors.push(`${widgetLabel}: Icon Auto is required`);
+                        } else {
+                            if (!widget.icon_on) errors.push(`${widgetLabel}: Icon On is required`);
+                            if (!widget.icon_off) errors.push(`${widgetLabel}: Icon Off is required`);
                         }
                     }
                 }
@@ -1518,6 +1644,12 @@
                     for (const widget of page.widgets) {
                         if (widget.icon_on) usedIcons.add(widget.icon_on);
                         if (widget.icon_off) usedIcons.add(widget.icon_off);
+                        // Thermostat has additional icons
+                        if (widget.type === 'thermostat') {
+                            if (widget.icon_heat) usedIcons.add(widget.icon_heat);
+                            if (widget.icon_cool) usedIcons.add(widget.icon_cool);
+                            if (widget.icon_auto) usedIcons.add(widget.icon_auto);
+                        }
                     }
                 }
 
@@ -1571,11 +1703,26 @@
                     if (widget.entity_id && !entityVars[widget.entity_id]) {
                         const varName = widget.entity_id.replace(/\./g, '_');
                         entityVars[widget.entity_id] = varName;
-                        entities.push({
-                            varName,
-                            entity_id: widget.entity_id,
-                            command_type: widget.command_type
-                        });
+                        
+                        if (widget.type === 'thermostat') {
+                            // Thermostat needs two entities
+                            entities.push({
+                                varName: `${varName}_mode`,
+                                entity_id: widget.entity_id,
+                                command_type: 'SetClimateMode'
+                            });
+                            entities.push({
+                                varName: `${varName}_temp`,
+                                entity_id: widget.entity_id,
+                                command_type: 'SetClimateTemperature'
+                            });
+                        } else {
+                            entities.push({
+                                varName,
+                                entity_id: widget.entity_id,
+                                command_type: widget.command_type
+                            });
+                        }
                     }
                 }
             }
@@ -1648,6 +1795,33 @@ ${navMode === 'tabs' ? '    screen_manager_set_nav_mode(screens, NavigationMode:
             .icon_off = ${iconOff},
             .pos_x = ${widget.pos_x},
             .pos_y = ${widget.pos_y},
+        },
+        ${pageVar});
+`;
+                    } else if (widget.type === 'thermostat') {
+                        const iconHeat = sanitizeIconName(widget.icon_heat || 'fire');
+                        const iconCool = sanitizeIconName(widget.icon_cool || 'snowflake');
+                        const iconAuto = sanitizeIconName(widget.icon_auto || 'autorenew');
+                        const modeEntityVar = `${entityVar}_mode`;
+                        const tempEntityVar = `${entityVar}_temp`;
+                        
+                        code += `
+    screen_add_thermostat(
+        ThermostatConfig{
+            .mode_entity_ref = store_add_entity(store, ${modeEntityVar}),
+            .temp_entity_ref = store_add_entity(store, ${tempEntityVar}),
+            .label = "${widget.label}",
+            .icon_off = ${iconOff},
+            .icon_heat = ${iconHeat},
+            .icon_cool = ${iconCool},
+            .icon_auto = ${iconAuto},
+            .pos_x = ${widget.pos_x},
+            .pos_y = ${widget.pos_y},
+            .width = ${widget.width},
+            .height = ${THERMOSTAT_HEIGHT},
+            .min_temp = ${widget.min_temp},
+            .max_temp = ${widget.max_temp},
+            .temp_unit = '${widget.temp_unit}',
         },
         ${pageVar});
 `;
@@ -1944,13 +2118,14 @@ ${navMode === 'tabs' ? '    screen_manager_set_nav_mode(screens, NavigationMode:
                 
                 if (pageIdx >= 0 && entityMatch && entities[entityMatch[1]]) {
                     const entity = entities[entityMatch[1]];
+                    const stripIconPrefix = (name) => name.replace(/^icon_/, '').replace(/_/g, '-');
                     pages[pageIdx].widgets.push({
                         type: 'button',
                         entity_id: entity.entity_id,
                         command_type: entity.command_type,
                         label: labelMatch ? labelMatch[1] : 'Button',
-                        icon_on: iconOnMatch ? iconOnMatch[1].replace(/_/g, '-') : 'lightbulb-outline',
-                        icon_off: iconOffMatch ? iconOffMatch[1].replace(/_/g, '-') : 'lightbulb-off-outline',
+                        icon_on: iconOnMatch ? stripIconPrefix(iconOnMatch[1]) : 'lightbulb-outline',
+                        icon_off: iconOffMatch ? stripIconPrefix(iconOffMatch[1]) : 'lightbulb-off-outline',
                         pos_x: posXMatch ? parseInt(posXMatch[1]) : 30,
                         pos_y: posYMatch ? parseInt(posYMatch[1]) : 30,
                         width: 100,
@@ -1977,6 +2152,7 @@ ${navMode === 'tabs' ? '    screen_manager_set_nav_mode(screens, NavigationMode:
                 
                 if (pageIdx >= 0 && entityMatch && entities[entityMatch[1]]) {
                     const entity = entities[entityMatch[1]];
+                    const stripIconPrefix = (name) => name.replace(/^icon_/, '').replace(/_/g, '-');
                     let width = 480;
                     if (widthMatch) {
                         const widthStr = widthMatch[1];
@@ -1993,11 +2169,54 @@ ${navMode === 'tabs' ? '    screen_manager_set_nav_mode(screens, NavigationMode:
                         entity_id: entity.entity_id,
                         command_type: entity.command_type,
                         label: labelMatch ? labelMatch[1] : 'Slider',
-                        icon_on: iconOnMatch ? iconOnMatch[1].replace(/_/g, '-') : 'lightbulb-outline',
-                        icon_off: iconOffMatch ? iconOffMatch[1].replace(/_/g, '-') : 'lightbulb-off-outline',
+                        icon_on: iconOnMatch ? stripIconPrefix(iconOnMatch[1]) : 'lightbulb-outline',
+                        icon_off: iconOffMatch ? stripIconPrefix(iconOffMatch[1]) : 'lightbulb-off-outline',
                         pos_x: posXMatch ? parseInt(posXMatch[1]) : 30,
                         pos_y: posYMatch ? parseInt(posYMatch[1]) : 30,
                         width: width
+                    });
+                }
+            }
+
+            // Parse thermostats - handle multiline
+            const thermostatRegex = /screen_add_thermostat\(\s*ThermostatConfig\{([\s\S]*?)\},\s*(\w+)\);/g;
+            while ((match = thermostatRegex.exec(content)) !== null) {
+                const configBlock = match[1];
+                const pageVar = match[2];
+                const pageIdx = pageVars.indexOf(pageVar);
+                
+                const modeEntityMatch = configBlock.match(/\.mode_entity_ref\s*=\s*store_add_entity\(store,\s*(\w+)\)/);
+                const tempEntityMatch = configBlock.match(/\.temp_entity_ref\s*=\s*store_add_entity\(store,\s*(\w+)\)/);
+                const labelMatch = configBlock.match(/\.label\s*=\s*"([^"]*)"/);
+                const iconOffMatch = configBlock.match(/\.icon_off\s*=\s*(\w+)/);
+                const iconHeatMatch = configBlock.match(/\.icon_heat\s*=\s*(\w+)/);
+                const iconCoolMatch = configBlock.match(/\.icon_cool\s*=\s*(\w+)/);
+                const iconAutoMatch = configBlock.match(/\.icon_auto\s*=\s*(\w+)/);
+                const posXMatch = configBlock.match(/\.pos_x\s*=\s*(\d+)/);
+                const posYMatch = configBlock.match(/\.pos_y\s*=\s*(\d+)/);
+                const widthMatch = configBlock.match(/\.width\s*=\s*(\d+)/);
+                const minTempMatch = configBlock.match(/\.min_temp\s*=\s*(\d+)/);
+                const maxTempMatch = configBlock.match(/\.max_temp\s*=\s*(\d+)/);
+                const tempUnitMatch = configBlock.match(/\.temp_unit\s*=\s*'([FC])'/);
+                
+                if (pageIdx >= 0 && modeEntityMatch && entities[modeEntityMatch[1]]) {
+                    const entity = entities[modeEntityMatch[1]];
+                    const stripIconPrefix = (name) => name.replace(/^icon_/, '').replace(/_/g, '-');
+                    pages[pageIdx].widgets.push({
+                        type: 'thermostat',
+                        entity_id: entity.entity_id,
+                        command_type: 'SetClimateMode',
+                        label: labelMatch ? labelMatch[1] : 'Thermostat',
+                        icon_off: iconOffMatch ? stripIconPrefix(iconOffMatch[1]) : 'power',
+                        icon_heat: iconHeatMatch ? stripIconPrefix(iconHeatMatch[1]) : 'fire',
+                        icon_cool: iconCoolMatch ? stripIconPrefix(iconCoolMatch[1]) : 'snowflake',
+                        icon_auto: iconAutoMatch ? stripIconPrefix(iconAutoMatch[1]) : 'autorenew',
+                        pos_x: posXMatch ? parseInt(posXMatch[1]) : 30,
+                        pos_y: posYMatch ? parseInt(posYMatch[1]) : 30,
+                        width: widthMatch ? parseInt(widthMatch[1]) : 480,
+                        min_temp: minTempMatch ? parseInt(minTempMatch[1]) : 60,
+                        max_temp: maxTempMatch ? parseInt(maxTempMatch[1]) : 85,
+                        temp_unit: tempUnitMatch ? tempUnitMatch[1] : 'F'
                     });
                 }
             }

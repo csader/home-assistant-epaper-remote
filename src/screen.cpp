@@ -2,6 +2,7 @@
 #include "esp_system.h"
 #include "widgets/OnOffButton.h"
 #include "widgets/Slider.h"
+#include "widgets/Thermostat.h"
 
 void screen_manager_init(ScreenManager* manager) {
     manager->page_count = 0;
@@ -90,4 +91,33 @@ void screen_add_button(ButtonConfig config, Screen* screen) {
     const uint16_t widget_idx = screen->widget_count++;
     screen->widgets[widget_idx] = widget;
     screen->entity_ids[widget_idx] = config.entity_ref.index;
+}
+
+void screen_add_thermostat(ThermostatConfig config, Screen* screen) {
+    if (screen->widget_count >= MAX_WIDGETS_PER_SCREEN - 1) {
+        esp_system_abort("too many widgets configured");
+    }
+
+    Rect rect{
+        .x = config.pos_x,
+        .y = config.pos_y,
+        .w = config.width,
+        .h = config.height,
+    };
+
+    Thermostat* widget = new (std::nothrow) Thermostat(
+        config.label, config.icon_off, config.icon_heat, config.icon_cool, config.icon_auto,
+        rect, config.min_temp, config.max_temp, config.temp_unit);
+    if (!widget) {
+        esp_system_abort("out of memory");
+    }
+
+    // Thermostat uses two entity slots: one for mode, one for temperature
+    const uint16_t mode_idx = screen->widget_count++;
+    screen->widgets[mode_idx] = widget;
+    screen->entity_ids[mode_idx] = config.mode_entity_ref.index;
+
+    const uint16_t temp_idx = screen->widget_count++;
+    screen->widgets[temp_idx] = widget;
+    screen->entity_ids[temp_idx] = config.temp_entity_ref.index;
 }

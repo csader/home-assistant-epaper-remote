@@ -44,6 +44,23 @@ struct ButtonConfig {
     uint16_t pos_y;
 };
 
+struct ThermostatConfig {
+    EntityRef mode_entity_ref;
+    EntityRef temp_entity_ref;
+    const char* label;
+    const uint8_t* icon_off;
+    const uint8_t* icon_heat;
+    const uint8_t* icon_cool;
+    const uint8_t* icon_auto;
+    uint16_t pos_x;
+    uint16_t pos_y;
+    uint16_t width;
+    uint16_t height;
+    uint8_t min_temp;
+    uint8_t max_temp;
+    char temp_unit; // 'F' or 'C'
+};
+
 void screen_manager_init(ScreenManager* manager);
 Screen* screen_manager_add_page(ScreenManager* manager, const char* label = nullptr);
 Screen* screen_manager_get_current(ScreenManager* manager);
@@ -54,3 +71,4 @@ void screen_manager_set_nav_mode(ScreenManager* manager, NavigationMode mode);
 
 void screen_add_slider(SliderConfig config, Screen* screen);
 void screen_add_button(ButtonConfig config, Screen* screen);
+void screen_add_thermostat(ThermostatConfig config, Screen* screen);

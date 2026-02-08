@@ -11,6 +11,7 @@ public:
     Rect partialDraw(FASTEPD* display, BitDepth depth, uint8_t from, uint8_t to) override;
     bool isTouching(const TouchEvent* touch_event) const override;
     uint8_t getValueFromTouch(const TouchEvent* touch_event, uint8_t original_value) const override;
+    WidgetType getType() const override { return WidgetType::Slider; }
 
 private:
     const char* label_;

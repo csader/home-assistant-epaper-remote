@@ -62,6 +62,16 @@ void configure_remote(Configuration* config, EntityStore* store, ScreenManager* 
         .entity_id = "automation.night_mode",
         .command_type = CommandType::AutomationOnOff,
     };
+    
+    // Thermostat example (uses two entity slots)
+    EntityConfig thermostat_mode = {
+        .entity_id = "climate.living_room",
+        .command_type = CommandType::SetClimateMode,
+    };
+    EntityConfig thermostat_temp = {
+        .entity_id = "climate.living_room",
+        .command_type = CommandType::SetClimateTemperature,
+    };
 
     // =========================================================================
     // Screen Layout (Single Page)
@@ -176,4 +186,27 @@ void configure_remote(Configuration* config, EntityStore* store, ScreenManager* 
             .pos_y = 720,
         },
         page);
+
+    // Thermostat widget (commented out - uncomment to use)
+    // Note: Thermostat uses two entity slots and requires mode icons
+    /*
+    screen_add_thermostat(
+        ThermostatConfig{
+            .mode_entity_ref = store_add_entity(store, thermostat_mode),
+            .temp_entity_ref = store_add_entity(store, thermostat_temp),
+            .label = "Living Room",
+            .icon_off = power,
+            .icon_heat = fire,
+            .icon_cool = snowflake,
+            .icon_auto = autorenew,
+            .pos_x = 30,
+            .pos_y = 220,
+            .width = 460,
+            .height = 170,
+            .min_temp = 60,  // Fahrenheit
+            .max_temp = 85,
+            .temp_unit = 'F',  // 'F' for Fahrenheit, 'C' for Celsius
+        },
+        page);
+    */
 }

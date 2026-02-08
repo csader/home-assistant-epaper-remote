@@ -20,6 +20,12 @@ enum class BitDepth : uint8_t {
     BD_4BPP,
 };
 
+enum class WidgetType : uint8_t {
+    Button,
+    Slider,
+    Thermostat,
+};
+
 class Widget {
 public:
     virtual ~Widget() = default;
@@ -27,4 +33,5 @@ public:
     virtual Rect partialDraw(FASTEPD* display, BitDepth depth, uint8_t from, uint8_t to) = 0;
     virtual bool isTouching(const TouchEvent* touch_event) const = 0;
     virtual uint8_t getValueFromTouch(const TouchEvent* touch_event, uint8_t original_value) const = 0;
+    virtual WidgetType getType() const = 0;
 };
