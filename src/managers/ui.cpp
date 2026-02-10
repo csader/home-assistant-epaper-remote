@@ -86,28 +86,30 @@ void ui_draw_carousel_nav(FASTEPD* epaper, uint8_t current_page, uint8_t page_co
 }
 
 void ui_draw_tabs_nav(FASTEPD* epaper, ScreenManager* screens, uint8_t current_page, BitDepth depth) {
-    uint8_t fill_color = (depth == BitDepth::BD_4BPP) ? 0xf : BBEP_WHITE;
-
+    // Use smaller font size for tabs to reduce ghosting
+    // Note: We only have 26pt font, so we'll use tighter spacing and smaller padding
     epaper->setFont(Montserrat_Regular_26);
     epaper->setTextColor(BBEP_BLACK);
 
-    // Get consistent font height using reference string (same pattern as widgets)
+    // Get font height
     BB_RECT font_rect;
     epaper->getStringBox("pI", &font_rect);
     uint16_t font_height = font_rect.h;
 
-    // Calculate tab widths and total width
+    // Calculate tab widths with reduced padding
+    const uint16_t SMALL_TAB_PADDING = 10; // Reduced from 20
     BB_RECT text_rects[MAX_PAGES];
     uint16_t total_width = 0;
     for (uint8_t i = 0; i < screens->page_count; i++) {
         const char* label = screens->pages[i].label ? screens->pages[i].label : "Page";
         epaper->getStringBox(label, &text_rects[i]);
-        total_width += text_rects[i].w + TAB_PADDING * 2;
+        total_width += text_rects[i].w + SMALL_TAB_PADDING * 2;
     }
 
     // Calculate starting x position to center all tabs
     uint16_t x = (DISPLAY_WIDTH - total_width) / 2;
-    uint16_t nav_center_y = DISPLAY_HEIGHT - NAV_BAR_HEIGHT / 2;
+    // Move tabs higher up from bottom edge
+    uint16_t nav_center_y = DISPLAY_HEIGHT - NAV_BAR_HEIGHT / 2 - 15; // Moved up 15px
 
     // Consistent text baseline for all tabs
     uint16_t text_y = nav_center_y + font_height / 2 - 4;
@@ -115,18 +117,18 @@ void ui_draw_tabs_nav(FASTEPD* epaper, ScreenManager* screens, uint8_t current_p
     // Draw each tab
     for (uint8_t i = 0; i < screens->page_count; i++) {
         const char* label = screens->pages[i].label ? screens->pages[i].label : "Page";
-        uint16_t tab_width = text_rects[i].w + TAB_PADDING * 2;
-        uint16_t text_x = x + TAB_PADDING;
+        uint16_t tab_width = text_rects[i].w + SMALL_TAB_PADDING * 2;
+        uint16_t text_x = x + SMALL_TAB_PADDING;
 
-        // Active tab: draw simple underline
+        // Active tab: draw underline
         if (i == current_page) {
-            uint16_t underline_y = text_y + 6;
-            epaper->fillRect(text_x - 4, underline_y, text_rects[i].w + 8, 3, BBEP_BLACK);
+            uint16_t underline_y = text_y + 4;
+            epaper->fillRect(text_x - 2, underline_y, text_rects[i].w + 4, 2, BBEP_BLACK);
         }
 
-        // Draw text (same position for all tabs)
+        // Draw text
         epaper->setCursor(text_x, text_y);
-        epaper->write(label);
+        epaper->print(label);
 
         x += tab_width;
     }
