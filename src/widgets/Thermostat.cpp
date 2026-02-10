@@ -118,6 +118,21 @@ void Thermostat::fullDraw(FASTEPD* display, BitDepth depth, uint8_t value) {
 }
 
 Rect Thermostat::partialDraw(FASTEPD* display, BitDepth depth, uint8_t from, uint8_t to) {
+    // For temperature changes, clear the text area first to prevent ghosting
+    uint16_t temp_y = rect_.y + 50;
+    uint16_t temp_x = rect_.x + BUTTON_SIZE + 30;
+    uint16_t btn_size = 40;
+    uint16_t plus_x = temp_x + rect_.w - BUTTON_SIZE - 30 - btn_size;
+    
+    // Calculate text area between buttons
+    uint16_t text_x = temp_x + btn_size;
+    uint16_t text_width = plus_x - text_x;
+    uint16_t text_height = btn_size;
+    
+    // Clear the text area with white
+    display->fillRect(text_x, temp_y, text_width, text_height, BBEP_WHITE);
+    
+    // Now draw the full widget
     fullDraw(display, depth, to);
     return rect_;
 }
