@@ -35,16 +35,30 @@ static bool handle_carousel_touch(ScreenManager* screens, uint16_t x, EntityStor
 static bool handle_tabs_touch(ScreenManager* screens, uint16_t x, EntityStore* store) {
     uint8_t old_page = screens->current_page;
 
-    // Calculate tab positions (same logic as ui_draw_tabs_nav)
-    // We estimate tab widths based on a rough average since we don't have font metrics here
-    uint16_t avg_tab_width = DISPLAY_WIDTH / screens->page_count;
-    uint16_t start_x = (DISPLAY_WIDTH - (avg_tab_width * screens->page_count)) / 2;
+    // Check for arrow touches (50px on each side)
+    const uint16_t ARROW_SPACE = 50;
+    
+    // Left arrow - go to previous page
+    if (x < ARROW_SPACE && screens->current_page > 0) {
+        screen_manager_prev_page(screens);
+    }
+    // Right arrow - go to next page
+    else if (x > DISPLAY_WIDTH - ARROW_SPACE && screens->current_page < screens->page_count - 1) {
+        screen_manager_next_page(screens);
+    }
+    // Tab touch - calculate which tab was touched
+    else {
+        // Calculate tab positions (same logic as ui_draw_tabs_nav)
+        // We estimate tab widths based on a rough average since we don't have font metrics here
+        uint16_t avg_tab_width = DISPLAY_WIDTH / screens->page_count;
+        uint16_t start_x = (DISPLAY_WIDTH - (avg_tab_width * screens->page_count)) / 2;
 
-    // Determine which tab was touched
-    if (x >= start_x) {
-        uint8_t touched_tab = (x - start_x) / avg_tab_width;
-        if (touched_tab < screens->page_count) {
-            screen_manager_set_page(screens, touched_tab);
+        // Determine which tab was touched
+        if (x >= start_x) {
+            uint8_t touched_tab = (x - start_x) / avg_tab_width;
+            if (touched_tab < screens->page_count) {
+                screen_manager_set_page(screens, touched_tab);
+            }
         }
     }
 

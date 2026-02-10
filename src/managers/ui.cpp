@@ -97,27 +97,81 @@ void ui_draw_tabs_nav(FASTEPD* epaper, ScreenManager* screens, uint8_t current_p
     uint16_t font_height = font_rect.h;
 
     // Calculate tab widths with reduced padding
-    const uint16_t SMALL_TAB_PADDING = 10; // Reduced from 20
+    const uint16_t SMALL_TAB_PADDING = 10;
+    const uint16_t ARROW_SPACE = 50; // Space reserved for arrows on each side (reduced from 80)
+    const uint16_t AVAILABLE_WIDTH = DISPLAY_WIDTH - (ARROW_SPACE * 2);
+    
     BB_RECT text_rects[MAX_PAGES];
+    uint16_t tab_widths[MAX_PAGES];
     uint16_t total_width = 0;
+    
     for (uint8_t i = 0; i < screens->page_count; i++) {
         const char* label = screens->pages[i].label ? screens->pages[i].label : "Page";
         epaper->getStringBox(label, &text_rects[i]);
-        total_width += text_rects[i].w + SMALL_TAB_PADDING * 2;
+        tab_widths[i] = text_rects[i].w + SMALL_TAB_PADDING * 2;
+        total_width += tab_widths[i];
     }
-
-    // Calculate starting x position to center all tabs
-    uint16_t x = (DISPLAY_WIDTH - total_width) / 2;
-    // Move tabs higher up from bottom edge
-    uint16_t nav_center_y = DISPLAY_HEIGHT - NAV_BAR_HEIGHT / 2 - 15; // Moved up 15px
-
-    // Consistent text baseline for all tabs
+    
+    // Determine which tabs to show
+    uint8_t first_visible_tab = 0;
+    uint8_t last_visible_tab = screens->page_count - 1;
+    
+    if (total_width > AVAILABLE_WIDTH) {
+        // Need to scroll - show tabs around current page
+        uint16_t visible_width = tab_widths[current_page];
+        first_visible_tab = current_page;
+        last_visible_tab = current_page;
+        
+        // Add tabs to the right
+        for (uint8_t i = current_page + 1; i < screens->page_count && visible_width + tab_widths[i] <= AVAILABLE_WIDTH; i++) {
+            visible_width += tab_widths[i];
+            last_visible_tab = i;
+        }
+        
+        // Add tabs to the left
+        for (int8_t i = current_page - 1; i >= 0 && visible_width + tab_widths[i] <= AVAILABLE_WIDTH; i--) {
+            visible_width += tab_widths[i];
+            first_visible_tab = i;
+        }
+    }
+    
+    // Calculate starting x position to center visible tabs
+    uint16_t visible_width = 0;
+    for (uint8_t i = first_visible_tab; i <= last_visible_tab; i++) {
+        visible_width += tab_widths[i];
+    }
+    
+    uint16_t x = (DISPLAY_WIDTH - visible_width) / 2;
+    uint16_t nav_center_y = DISPLAY_HEIGHT - NAV_BAR_HEIGHT / 2 - 15;
     uint16_t text_y = nav_center_y + font_height / 2 - 4;
 
-    // Draw each tab
-    for (uint8_t i = 0; i < screens->page_count; i++) {
+    // Draw arrows if needed
+    if (first_visible_tab > 0 || last_visible_tab < screens->page_count - 1) {
+        uint16_t arrow_y = nav_center_y;
+        uint8_t arrow_size = 12;
+        
+        // Left arrow if there are tabs to the left
+        if (first_visible_tab > 0) {
+            uint16_t arrow_x = 40;
+            epaper->drawLine(arrow_x + arrow_size, arrow_y - arrow_size, arrow_x, arrow_y, BBEP_BLACK);
+            epaper->drawLine(arrow_x, arrow_y, arrow_x + arrow_size, arrow_y + arrow_size, BBEP_BLACK);
+            epaper->drawLine(arrow_x + arrow_size, arrow_y - arrow_size + 1, arrow_x + 1, arrow_y, BBEP_BLACK);
+            epaper->drawLine(arrow_x + 1, arrow_y, arrow_x + arrow_size, arrow_y + arrow_size - 1, BBEP_BLACK);
+        }
+        
+        // Right arrow if there are tabs to the right
+        if (last_visible_tab < screens->page_count - 1) {
+            uint16_t arrow_x = DISPLAY_WIDTH - 40;
+            epaper->drawLine(arrow_x - arrow_size, arrow_y - arrow_size, arrow_x, arrow_y, BBEP_BLACK);
+            epaper->drawLine(arrow_x, arrow_y, arrow_x - arrow_size, arrow_y + arrow_size, BBEP_BLACK);
+            epaper->drawLine(arrow_x - arrow_size, arrow_y - arrow_size + 1, arrow_x - 1, arrow_y, BBEP_BLACK);
+            epaper->drawLine(arrow_x - 1, arrow_y, arrow_x - arrow_size, arrow_y + arrow_size - 1, BBEP_BLACK);
+        }
+    }
+
+    // Draw visible tabs
+    for (uint8_t i = first_visible_tab; i <= last_visible_tab; i++) {
         const char* label = screens->pages[i].label ? screens->pages[i].label : "Page";
-        uint16_t tab_width = text_rects[i].w + SMALL_TAB_PADDING * 2;
         uint16_t text_x = x + SMALL_TAB_PADDING;
 
         // Active tab: draw underline
@@ -130,7 +184,7 @@ void ui_draw_tabs_nav(FASTEPD* epaper, ScreenManager* screens, uint8_t current_p
         epaper->setCursor(text_x, text_y);
         epaper->print(label);
 
-        x += tab_width;
+        x += tab_widths[i];
     }
 }
 
