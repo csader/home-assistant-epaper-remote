@@ -30,7 +30,7 @@ constexpr uint32_t HASS_IGNORE_UPDATE_DELAY_MS = 1000;
 // Other constants
 constexpr size_t MAX_ENTITIES = 16;
 constexpr size_t MAX_WIDGETS_PER_SCREEN = 8;
-constexpr size_t MAX_PAGES = 4;
+constexpr size_t MAX_PAGES = 20;
 constexpr uint32_t TOUCH_RELEASE_TIMEOUT_MS = 50;
 constexpr uint32_t DISPLAY_FULL_REDRAW_TIMEOUT_MS = 5000;
 

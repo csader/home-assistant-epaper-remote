@@ -1477,39 +1477,114 @@
 
         function drawTabsNav(ctx, W, H) {
             const NAV_BAR_HEIGHT = 60;
-            const TAB_PADDING = 20;
+            const SMALL_TAB_PADDING = 10;
+            const ARROW_SPACE = 50;
+            // Scale available width to match device behavior
+            const DEVICE_WIDTH = W; // 540px
+            // Adjust factor to show ~2 tabs like device (tune this to match)
+            const SCALE_FACTOR = 1.25;
+            const AVAILABLE_WIDTH = (DEVICE_WIDTH - (ARROW_SPACE * 2)) / SCALE_FACTOR;
             
             ctx.font = '40px Montserrat, sans-serif';
             ctx.fillStyle = '#000';
 
-            // Calculate total width
-            let totalWidth = 0;
+            // Calculate tab widths
             const textWidths = [];
+            const tabWidths = [];
+            let totalWidth = 0;
+            
+            // Use actual rendered widths (40px font) for overflow detection in preview
             for (const page of state.pages) {
                 const textWidth = ctx.measureText(page.label).width;
+                const tabWidth = textWidth + SMALL_TAB_PADDING * 2;
                 textWidths.push(textWidth);
-                totalWidth += textWidth + TAB_PADDING * 2;
+                tabWidths.push(tabWidth);
+                totalWidth += tabWidth;
             }
 
-            let x = (W - totalWidth) / 2;
-            const navCenterY = H - NAV_BAR_HEIGHT / 2;
-            const textY = navCenterY + 13 / 2 - 4; // Approximate font height / 2
+            // Determine which tabs to show
+            let firstVisibleTab = 0;
+            let lastVisibleTab = state.pages.length - 1;
+            
+            if (totalWidth > AVAILABLE_WIDTH) {
+                // Need to scroll - show tabs around current page
+                let visibleWidth = tabWidths[state.currentPage];
+                firstVisibleTab = state.currentPage;
+                lastVisibleTab = state.currentPage;
+                
+                // Add tabs to the right
+                for (let i = state.currentPage + 1; i < state.pages.length && visibleWidth + tabWidths[i] <= AVAILABLE_WIDTH; i++) {
+                    visibleWidth += tabWidths[i];
+                    lastVisibleTab = i;
+                }
+                
+                // Add tabs to the left
+                for (let i = state.currentPage - 1; i >= 0 && visibleWidth + tabWidths[i] <= AVAILABLE_WIDTH; i--) {
+                    visibleWidth += tabWidths[i];
+                    firstVisibleTab = i;
+                }
+            }
+            
+            // Calculate visible width
+            let visibleWidth = 0;
+            for (let i = firstVisibleTab; i <= lastVisibleTab; i++) {
+                visibleWidth += tabWidths[i];
+            }
+            
+            let x = (W - visibleWidth) / 2;
+            const navCenterY = H - NAV_BAR_HEIGHT / 2 - 15; // Moved up 15px
+            const textY = navCenterY + 13 / 2 - 4;
 
-            for (let i = 0; i < state.pages.length; i++) {
-                const page = state.pages[i];
+            // Draw arrows if needed
+            if (firstVisibleTab > 0 || lastVisibleTab < state.pages.length - 1) {
+                const arrowY = navCenterY;
+                const arrowSize = 12;
+                
+                // Left arrow
+                if (firstVisibleTab > 0) {
+                    const arrowX = 40;
+                    ctx.beginPath();
+                    ctx.moveTo(arrowX + arrowSize, arrowY - arrowSize);
+                    ctx.lineTo(arrowX, arrowY);
+                    ctx.lineTo(arrowX + arrowSize, arrowY + arrowSize);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(arrowX + arrowSize, arrowY - arrowSize + 1);
+                    ctx.lineTo(arrowX + 1, arrowY);
+                    ctx.lineTo(arrowX + arrowSize, arrowY + arrowSize - 1);
+                    ctx.stroke();
+                }
+                
+                // Right arrow
+                if (lastVisibleTab < state.pages.length - 1) {
+                    const arrowX = W - 40;
+                    ctx.beginPath();
+                    ctx.moveTo(arrowX - arrowSize, arrowY - arrowSize);
+                    ctx.lineTo(arrowX, arrowY);
+                    ctx.lineTo(arrowX - arrowSize, arrowY + arrowSize);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(arrowX - arrowSize, arrowY - arrowSize + 1);
+                    ctx.lineTo(arrowX - 1, arrowY);
+                    ctx.lineTo(arrowX - arrowSize, arrowY + arrowSize - 1);
+                    ctx.stroke();
+                }
+            }
+
+            // Draw visible tabs
+            for (let i = firstVisibleTab; i <= lastVisibleTab; i++) {
                 const textWidth = textWidths[i];
-                const tabWidth = textWidth + TAB_PADDING * 2;
-                const textX = x + TAB_PADDING;
+                const textX = x + SMALL_TAB_PADDING;
 
                 // Underline active tab
                 if (i === state.currentPage) {
-                    const underlineY = textY + 6;
-                    ctx.fillRect(textX - 4, underlineY, textWidth + 8, 3);
+                    const underlineY = textY + 4;
+                    ctx.fillRect(textX - 2, underlineY, textWidth + 4, 2);
                 }
 
                 // Draw text
-                ctx.fillText(page.label, textX, textY);
-                x += tabWidth;
+                ctx.fillText(state.pages[i].label, textX, textY);
+                x += tabWidths[i];
             }
         }
 
